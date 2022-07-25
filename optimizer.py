@@ -16,30 +16,37 @@ def lineup(
 ) -> list[structures.Player]:
 
     _gkp = sorted(
-        (p for p in pool if p.position == "GK"), key=lambda p: p.xP, reverse=True
+        (p for p in pool if p.position == "GK"), key=lambda p: p.xP(), reverse=True
     )
     _def = sorted(
-        (p for p in pool if p.position == "DEF"), key=lambda p: p.xP, reverse=True
+        (p for p in pool if p.position == "DEF"), key=lambda p: p.xP(), reverse=True
     )
     _mid = sorted(
-        (p for p in pool if p.position == "MID"), key=lambda p: p.xP, reverse=True
+        (p for p in pool if p.position == "MID"), key=lambda p: p.xP(), reverse=True
     )
     _fwd = sorted(
-        (p for p in pool if p.position == "FWD"), key=lambda p: p.xP, reverse=True
+        (p for p in pool if p.position == "FWD"), key=lambda p: p.xP(), reverse=True
     )
 
     gkp_combinations = tuple(
         sorted(itertools.combinations(_gkp, 2), key=helpers.total_xP, reverse=True)
     )
+    gkp_combinations = tuple(c for c in gkp_combinations if constraints.team_constraint(c, n=1))
+
     def_combinations = tuple(
         sorted(itertools.combinations(_def, 5), key=helpers.total_xP, reverse=True)
     )
+    def_combinations = tuple(c for c in def_combinations if constraints.team_constraint(c, n=2))
+
     mid_combinations = tuple(
         sorted(itertools.combinations(_mid, 5), key=helpers.total_xP, reverse=True)
     )
+    mid_combinations = tuple(c for c in mid_combinations if constraints.team_constraint(c, n=2))
+
     fwd_combinations = tuple(
         sorted(itertools.combinations(_fwd, 3), key=helpers.total_xP, reverse=True)
     )
+    fwd_combinations = tuple(c for c in fwd_combinations if constraints.team_constraint(c, n=1))
 
     total = (
         len(gkp_combinations)
@@ -63,8 +70,6 @@ def lineup(
     max_cost_mid = helpers.total_price(max(mid_combinations, key=helpers.total_price))
     max_cost_fwd = helpers.total_price(max(fwd_combinations, key=helpers.total_price))
 
-    max_xp_gkp = helpers.total_xP(max(gkp_combinations, key=helpers.total_xP))
-    max_xp_def = helpers.total_xP(max(def_combinations, key=helpers.total_xP))
     max_xp_mid = helpers.total_xP(max(mid_combinations, key=helpers.total_xP))
     max_xp_fwd = helpers.total_xP(max(fwd_combinations, key=helpers.total_xP))
 
@@ -73,8 +78,8 @@ def lineup(
     max_xp_mid_fwd = max_xp_mid + max_xp_fwd
 
     best_lineup: T.List[structures.Player] = []
-    buget_lower = buget * 0.85
-    best_xp = sum((max_xp_gkp, max_xp_def, max_xp_mid, max_xp_fwd))
+    buget_lower = buget * 0.8
+    best_xp = float("-Inf")
     step = len(mid_combinations) * len(fwd_combinations)
 
     def lvl1(c):
@@ -84,6 +89,7 @@ def lineup(
             <= buget - min_cost_mid_fwd
             and helpers.total_xP(c) + max_xp_mid_fwd > best_xp
             and constraints.team_constraint(c)
+            and constraints.gkp_def_not_same_team(c)
         )
 
     def lvl2(c):
@@ -96,42 +102,45 @@ def lineup(
     def lvl3(c):
         return (
             helpers.total_price(c) <= buget
-            and helpers.total_xP(c) > best_xp
+            and helpers.total_xP(c) >= best_xp
             and constraints.team_constraint(c)
         )
 
-    while not best_lineup:
-
-        best_xp = best_xp * 0.95
-
-        with tqdm(
-            total=total,
-            bar_format="{percentage:3.0f}%|{bar:20}{r_bar}",
-            unit_scale=True,
-            unit_divisor=2**10,
-        ) as bar:
-            for g in gkp_combinations:
-                for d in def_combinations:
-                    bar.update(step)
-                    g1 = g + d
-                    if lvl1(g1):
-                        for m in mid_combinations:
-                            g2 = g1 + m
-                            if lvl2(g2):
-                                for f in fwd_combinations:
-                                    g3 = g2 + f
-                                    if lvl3(g3):
-                                        best_xp = helpers.total_xP(g3)
-                                        best_lineup = g3
-                                        print(best_xp)
+    with tqdm(
+        total=total,
+        bar_format="{percentage:3.0f}%|{bar:20}{r_bar}",
+        unit_scale=True,
+        unit_divisor=2**10,
+    ) as bar:
+        for g in gkp_combinations:
+            for d in def_combinations:
+                bar.update(step)
+                gk_def = g + d
+                if lvl1(gk_def):
+                    for m in mid_combinations:
+                        gk_def_mid = gk_def + m
+                        if lvl2(gk_def_mid):
+                            for f in fwd_combinations:
+                                gk_def_mid_fwd = gk_def_mid + f
+                                if lvl3(gk_def_mid_fwd):
+                                    best_xp = helpers.total_xP(gk_def_mid_fwd)
+                                    best_lineup = gk_def_mid_fwd
+                                    helpers.lprint(best_lineup)
 
     return best_lineup
 
 
 if __name__ == "__main__":
     import fetch
-    pool = fetch.players()
-    pool = [p for p in pool if p.xP > 4]
-    print(len(pool))
-    for p in sorted(lineup(pool=pool), key=lambda x: x.position):
-        print(p.position, p.team[-1], p.name, p.xP)
+
+    pool = []
+    for _, top in fetch.top_position_players(
+        strikers=15,
+        midfielders=20,
+        defenders=20,
+        goalkeeper=15,
+    ):
+        pool.extend(top)
+
+    helpers.lprint(pool)
+    helpers.lprint(lineup(pool=pool))

@@ -36,13 +36,20 @@ class Player:
     opponent: list[str]
     points: list[int]
     position: T.Literal["GK", "DEF", "MID", "FWD"]
-    price: list[int]
+    price: int
     selected: list[int]
-    team: list[TEAM]
+    team: TEAM
     _xp: T.Optional[float] = None
 
-    @property
-    def xP(self) -> float:
+    def xP(self, last_n: int = 0) -> float:
         if self._xp is None:
-            self._xp = statistics.mean(self.points)
+            self._xp = round(statistics.mean(self.points[-last_n:]), 1)
         return self._xp
+
+    @property
+    def tp(self) -> int:
+        return sum(self.points)
+
+    @property
+    def tm(self) -> int:
+        return sum(self.minutes)
