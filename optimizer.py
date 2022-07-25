@@ -15,38 +15,45 @@ def lineup(
     buget: int = 1_000,
 ) -> list[structures.Player]:
 
-    _gkp = sorted(
-        (p for p in pool if p.position == "GK"), key=lambda p: p.xP(), reverse=True
-    )
-    _def = sorted(
-        (p for p in pool if p.position == "DEF"), key=lambda p: p.xP(), reverse=True
-    )
-    _mid = sorted(
-        (p for p in pool if p.position == "MID"), key=lambda p: p.xP(), reverse=True
-    )
-    _fwd = sorted(
-        (p for p in pool if p.position == "FWD"), key=lambda p: p.xP(), reverse=True
+    gkp_combinations = sorted(
+        (
+            c
+            for c in itertools.combinations((p for p in pool if p.position == "GK"), 2)
+            if constraints.team_constraint(c, 1)
+        ),
+        key=helpers.total_xP,
+        reverse=True,
     )
 
-    gkp_combinations = tuple(
-        sorted(itertools.combinations(_gkp, 2), key=helpers.total_xP, reverse=True)
+    def_combinations = sorted(
+        (
+            c
+            for c in itertools.combinations((p for p in pool if p.position == "DEF"), 5)
+            if constraints.team_constraint(c, 2)
+        ),
+        key=helpers.total_xP,
+        reverse=True,
     )
-    gkp_combinations = tuple(c for c in gkp_combinations if constraints.team_constraint(c, n=1))
 
-    def_combinations = tuple(
-        sorted(itertools.combinations(_def, 5), key=helpers.total_xP, reverse=True)
+    mid_combinations = sorted(
+        (
+            c
+            for c in itertools.combinations((p for p in pool if p.position == "MID"), 5)
+            if constraints.team_constraint(c, 2)
+        ),
+        key=helpers.total_xP,
+        reverse=True,
     )
-    def_combinations = tuple(c for c in def_combinations if constraints.team_constraint(c, n=2))
 
-    mid_combinations = tuple(
-        sorted(itertools.combinations(_mid, 5), key=helpers.total_xP, reverse=True)
+    fwd_combinations = sorted(
+        (
+            c
+            for c in itertools.combinations((p for p in pool if p.position == "FWD"), 3)
+            if constraints.team_constraint(c, 1)
+        ),
+        key=helpers.total_xP,
+        reverse=True,
     )
-    mid_combinations = tuple(c for c in mid_combinations if constraints.team_constraint(c, n=2))
-
-    fwd_combinations = tuple(
-        sorted(itertools.combinations(_fwd, 3), key=helpers.total_xP, reverse=True)
-    )
-    fwd_combinations = tuple(c for c in fwd_combinations if constraints.team_constraint(c, n=1))
 
     total = (
         len(gkp_combinations)
@@ -88,7 +95,7 @@ def lineup(
             <= helpers.total_price(c)
             <= buget - min_cost_mid_fwd
             and helpers.total_xP(c) + max_xp_mid_fwd > best_xp
-            and constraints.team_constraint(c)
+            and constraints.team_constraint(c, n=3)
             and constraints.gkp_def_not_same_team(c)
         )
 
@@ -96,14 +103,14 @@ def lineup(
         return (
             buget_lower - max_cost_fwd <= helpers.total_price(c) <= buget - min_cost_fwd
             and helpers.total_xP(c) + max_xp_fwd > best_xp
-            and constraints.team_constraint(c)
+            and constraints.team_constraint(c, n=3)
         )
 
     def lvl3(c):
         return (
             helpers.total_price(c) <= buget
             and helpers.total_xP(c) >= best_xp
-            and constraints.team_constraint(c)
+            and constraints.team_constraint(c, n=3)
         )
 
     with tqdm(
@@ -111,6 +118,7 @@ def lineup(
         bar_format="{percentage:3.0f}%|{bar:20}{r_bar}",
         unit_scale=True,
         unit_divisor=2**10,
+        ascii=True,
     ) as bar:
         for g in gkp_combinations:
             for d in def_combinations:
@@ -133,14 +141,17 @@ def lineup(
 if __name__ == "__main__":
     import fetch
 
-    pool = []
-    for _, top in fetch.top_position_players(
-        strikers=15,
-        midfielders=20,
-        defenders=20,
-        goalkeeper=15,
-    ):
-        pool.extend(top)
+    pool = [
+        p
+        for _, players in fetch.top_position_players(
+            strikers=0,
+            midfielders=0,
+            defenders=0,
+            goalkeeper=0,
+        )
+        for p in players
+    ]
 
+    pool = [p for p in pool if sum(p.minutes) > 90 * 38 * 0.1 and p.xP() > 0.2]
     helpers.lprint(pool)
     helpers.lprint(lineup(pool=pool))

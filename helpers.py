@@ -53,12 +53,14 @@ def lprint(lineup: T.List[structures.Player]) -> None:
     ):
         players = tuple(players)
         header(players, prefix=f"{pos}(", postfix=")")
-        print(" xP   price  name(team)")
+        print(f" xP   Price  Team            Player")
         for player in players:
             print(
-                f" {player.xP():<4} {player.price/10:<6} {player.name}({player.team})"
+                f" {player.xP():<4} {player.price/10:<6} {player.team:<{15}} {player.name}"
             )
 
 
 def header(pool: T.List[structures.Player], prefix="", postfix="") -> None:
-    print(f"{prefix}Price: {total_price(pool)/10} xP: {total_xP(pool)}{postfix}")
+    print(
+        f"{prefix}Price: {total_price(pool)/10} xP: {total_xP(pool)} n: {len(pool)}{postfix}"
+    )

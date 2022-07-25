@@ -1,49 +1,36 @@
 import statistics
 import dataclasses
 import typing as T
+import datetime
 
-TEAM = T.Literal[
-    "Arsenal",
-    "Aston Villa",
-    "Brentford",
-    "Brighton",
-    "Burnley",
-    "Chelsea",
-    "Crystal Palace",
-    "Everton",
-    "Fulham",
-    "Leeds",
-    "Leicester",
-    "Liverpool",
-    "Man City",
-    "Man Utd",
-    "Newcastle",
-    "Norwich",
-    "Sheffield Utd",
-    "Southampton",
-    "Spurs",
-    "Watford",
-    "West Brom",
-    "West Ham",
-    "Wolves",
-]
+
+@dataclasses.dataclass(frozen=True)
+class Fixture:
+    at_home: bool
+    away: str
+    difficulty: int
+    home: str
+    kickoff_time: datetime.datetime
 
 
 @dataclasses.dataclass
 class Player:
+    fixutres: tuple[Fixture, ...]
     minutes: list[int]
     name: str
-    opponent: list[str]
     points: list[int]
     position: T.Literal["GK", "DEF", "MID", "FWD"]
     price: int
     selected: list[int]
-    team: TEAM
+    team: str
     _xp: T.Optional[float] = None
 
-    def xP(self, last_n: int = 0) -> float:
+    def xP(self) -> float:
         if self._xp is None:
-            self._xp = round(statistics.mean(self.points[-last_n:]), 1)
+            self._xp = round(
+                statistics.mean(self.points) / self.upcoming_difficulty(),
+                2,
+            )
         return self._xp
 
     @property
@@ -53,3 +40,6 @@ class Player:
     @property
     def tm(self) -> int:
         return sum(self.minutes)
+
+    def upcoming_difficulty(self, n: int = 3) -> int:
+        return sum(f.difficulty for f in self.fixutres[:n])
