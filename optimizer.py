@@ -1,4 +1,3 @@
-import typing as T
 import itertools
 
 from tqdm import (
@@ -13,7 +12,7 @@ import structures
 def lineup(
     pool: list[structures.Player],
     buget: int = 1_000,
-) -> list[structures.Player]:
+):
 
     gkp_combinations = sorted(
         (
@@ -77,39 +76,28 @@ def lineup(
     max_cost_mid = helpers.total_price(max(mid_combinations, key=helpers.total_price))
     max_cost_fwd = helpers.total_price(max(fwd_combinations, key=helpers.total_price))
 
-    max_xp_mid = helpers.total_xP(max(mid_combinations, key=helpers.total_xP))
-    max_xp_fwd = helpers.total_xP(max(fwd_combinations, key=helpers.total_xP))
-
     min_cost_mid_fwd = min_cost_mid + min_cost_fwd
     max_cost_mid_fwd = max_cost_mid + max_cost_fwd
-    max_xp_mid_fwd = max_xp_mid + max_xp_fwd
 
-    best_lineup: T.List[structures.Player] = []
-    buget_lower = buget * 0.8
-    best_xp = float("-Inf")
+    best_lineup: list[structures.Player] = []
+    buget_lower = buget * 0.9
+    best_xp = 0
     step = len(mid_combinations) * len(fwd_combinations)
 
-    def lvl1(c):
-        return (
-            buget_lower - max_cost_mid_fwd
-            <= helpers.total_price(c)
-            <= buget - min_cost_mid_fwd
-            and helpers.total_xP(c) + max_xp_mid_fwd > best_xp
-            and constraints.team_constraint(c, n=3)
-            and constraints.gkp_def_not_same_team(c)
-        )
+    def score_gk_def(c):
+        return buget_lower - max_cost_mid_fwd <= helpers.total_price(
+            c
+        ) <= buget - min_cost_mid_fwd and constraints.team_constraint(c, n=3)
 
-    def lvl2(c):
-        return (
-            buget_lower - max_cost_fwd <= helpers.total_price(c) <= buget - min_cost_fwd
-            and helpers.total_xP(c) + max_xp_fwd > best_xp
-            and constraints.team_constraint(c, n=3)
-        )
+    def score_gk_def_mid(c):
+        return buget_lower - max_cost_fwd <= helpers.total_price(
+            c
+        ) <= buget - min_cost_fwd and constraints.team_constraint(c, n=3)
 
-    def lvl3(c):
+    def score_gk_def_mid_fwd(c):
         return (
             helpers.total_price(c) <= buget
-            and helpers.total_xP(c) >= best_xp
+            and helpers.best_lineup_xP(c) >= best_xp
             and constraints.team_constraint(c, n=3)
         )
 
@@ -124,16 +112,18 @@ def lineup(
             for d in def_combinations:
                 bar.update(step)
                 gk_def = g + d
-                if lvl1(gk_def):
+                if score_gk_def(gk_def):
                     for m in mid_combinations:
                         gk_def_mid = gk_def + m
-                        if lvl2(gk_def_mid):
+                        if score_gk_def_mid(gk_def_mid):
                             for f in fwd_combinations:
                                 gk_def_mid_fwd = gk_def_mid + f
-                                if lvl3(gk_def_mid_fwd):
-                                    best_xp = helpers.total_xP(gk_def_mid_fwd)
+                                if score_gk_def_mid_fwd(gk_def_mid_fwd):
+                                    bl = helpers.best_lineup(gk_def_mid_fwd)
+                                    best_xp = helpers.total_xP(bl)
                                     best_lineup = gk_def_mid_fwd
-                                    helpers.lprint(best_lineup)
+                                    helpers.lprint(best_lineup, [p.name for p in bl])
+                                    print("-->>", best_xp)
 
     return best_lineup
 
@@ -141,17 +131,26 @@ def lineup(
 if __name__ == "__main__":
     import fetch
 
-    pool = [
-        p
-        for _, players in fetch.top_position_players(
-            strikers=0,
-            midfielders=0,
-            defenders=0,
-            goalkeeper=0,
-        )
-        for p in players
-    ]
+    pool = []
+    for _, y in itertools.groupby(
+        sorted(
+            (p for p in fetch.players() if p.xP() > 0 and p.tm > 90 * 38 * 0.5),
+            key=lambda x: (x.position, x.price),
+        ),
+        key=lambda x: (x.position, x.price),
+    ):
+        pool.extend(tuple(y)[:3])
 
-    pool = [p for p in pool if sum(p.minutes) > 90 * 38 * 0.1 and p.xP() > 0.2]
+    # pool = [
+    #     p
+    #     for _, players in fetch.top_position_players(
+    #         strikers=0,
+    #         midfielders=0,
+    #         defenders=0,
+    #         goalkeeper=0,
+    #     )
+    #     for p in players
+    # ]
+
     helpers.lprint(pool)
     helpers.lprint(lineup(pool=pool))

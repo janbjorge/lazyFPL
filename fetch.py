@@ -1,5 +1,4 @@
 import csv
-import datetime
 import io
 import itertools
 import typing as T
@@ -13,7 +12,7 @@ import helpers
 import structures
 
 
-@cache.fcache(ttl=datetime.timedelta(days=1))
+@cache.fcache
 def bootstrap() -> dict:
     return requests.get(
         "https://fantasy.premierleague.com/api/bootstrap-static/"
@@ -34,7 +33,7 @@ def player_id(name: str) -> int:
     raise ValueError(f"No player named: {name}")
 
 
-@cache.fcache(ttl=datetime.timedelta(days=1))
+@cache.fcache
 def summary(id: int) -> dict:
     return requests.get(
         f"https://fantasy.premierleague.com/api/element-summary/{id}/"
@@ -57,7 +56,7 @@ def fixtures(name: str) -> tuple[structures.Fixture, ...]:
     )
 
 
-@cache.fcache(ttl=datetime.timedelta(days=1))
+@cache.fcache
 def team_name_from_id(id: int) -> str:
     for item in bootstrap()["teams"]:
         if id == item["id"]:
@@ -81,7 +80,7 @@ def team(player_name: str) -> str:
     raise ValueError(f"No team name: {player_name}")
 
 
-@cache.fcache(ttl=datetime.timedelta(days=1))
+@cache.fcache
 def players(
     url: str = "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
 ) -> tuple[structures.Player, ...]:
@@ -114,6 +113,13 @@ def players(
         )
 
     return sorted(players, key=lambda x: (x.position, x.price, x.name))
+
+
+def player(name: str) -> structures.Player:
+    for p in players():
+        if p.name.lower() == name.lower():
+            return p
+    raise ValueError(f"Unkown name {name}")
 
 
 def top_position_players(

@@ -30,17 +30,3 @@ def gkp_def_not_same_team(
     _gkps = set(p.team for p in lineup if p.position == "GK")
     _defs = set(p.team for p in lineup if p.position == "DEF")
     return not bool(_gkps.intersection(_defs))
-
-
-def valid_formation(lineup: T.Sequence[structures.Player]) -> bool:
-
-    if sum(1 for p in lineup if p.position == "GK") != 1:
-        return False
-
-    if sum(1 for p in lineup if p.position == "DEF") < 3:
-        return False
-
-    if sum(1 for p in lineup if p.position == "FWD") < 1:
-        return False
-
-    return True
