@@ -27,12 +27,19 @@ def valid_formation(
         (1, 5, 4, 1),
     ),
 ) -> bool:
-    return (
-        sum(1 for p in lineup if p.position == "GK"),
-        sum(1 for p in lineup if p.position == "DEF"),
-        sum(1 for p in lineup if p.position == "MID"),
-        sum(1 for p in lineup if p.position == "FWD"),
-    ) in eligible
+    gks = sum(1 for p in lineup if p.position == "GK")
+    if gks != 1:
+        return False
+    defs = sum(1 for p in lineup if p.position == "DEF")
+    if not (3<= defs <=5):
+        return False
+    mids =  sum(1 for p in lineup if p.position == "MID")
+    if not (3<= mids <= 5):
+        return False
+    fwds = sum(1 for p in lineup if p.position == "FWD")
+    if not (1<=fwds <= 3):
+        return False
+    return (gks, defs, mids, fwds) in eligible
 
 
 def best_lineup(
@@ -95,7 +102,7 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
         print(f" xP    Price  Team            Player")
         for player in players:
             print(
-                f" {player.xP():<5.2f} {player.price/10:<6} "
+                f" {player.xP():<5.2f} {player.price/10:<6}"
                 f" {player.team:<{15}} {player.name} "
                 f" {'X' if player.name in best else ''}"
             )

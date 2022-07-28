@@ -112,7 +112,7 @@ def players(
             )
         )
 
-    return sorted(players, key=lambda x: (x.position, x.price, x.name))
+    return sorted(players, key=lambda x: (x.xP(), x.name))
 
 
 def player(name: str) -> structures.Player:
@@ -122,34 +122,5 @@ def player(name: str) -> structures.Player:
     raise ValueError(f"Unkown name {name}")
 
 
-def top_position_players(
-    strikers: int,
-    midfielders: int,
-    defenders: int,
-    goalkeeper: int,
-) -> T.Generator[
-    tuple[T.Literal["GK", "DEF", "MID", "FWD"], tuple[structures.Player, ...]],
-    None,
-    None,
-]:
-    for _position, _players in itertools.groupby(
-        sorted(players(), key=lambda x: x.position),
-        key=lambda x: x.position,
-    ):
-        if _position == "GK":
-            n = goalkeeper
-        elif _position == "DEF":
-            n = defenders
-        elif _position == "MID":
-            n = midfielders
-        elif _position == "FWD":
-            n = strikers
-        else:
-            raise NotImplementedError(_position)
-
-        _players = tuple(sorted(_players, key=lambda x: x.xP()))
-        yield _position, _players[-n:]
-
-
 if __name__ == "__main__":
-    helpers.lprint([p for _, batch in top_position_players(0, 0, 0, 0) for p in batch])
+    helpers.lprint(players())
