@@ -27,10 +27,7 @@ class Player:
 
     def xP(self) -> float:
         if self._xp is None:
-            self._xp = round(
-                statistics.mean(self.points) / self.upcoming_difficulty(),
-                3,
-            )
+            self._xp = statistics.mean(self.points) / self.upcoming_difficulty()
         return self._xp
 
     @property

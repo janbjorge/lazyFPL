@@ -5,7 +5,7 @@ import structures
 
 
 def team_constraint(lineup: T.Sequence[structures.Player], n: int = 3) -> bool:
-    count = C.Counter(p.team[-1] for p in lineup)
+    count = C.Counter(p.team for p in lineup)
     return max(count.values()) <= n
 
 

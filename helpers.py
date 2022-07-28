@@ -5,12 +5,12 @@ import math
 import structures
 
 
-def total_price(lineup: list[structures.Player]) -> int:
+def squad_price(lineup: list[structures.Player]) -> int:
     return sum(p.price for p in lineup)
 
 
-def total_xP(lineup: T.Sequence[structures.Player]) -> float:
-    return round(sum(p.xP() for p in lineup), 2)
+def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
+    return sum(p.xP() for p in lineup)
 
 
 def valid_formation(
@@ -27,24 +27,26 @@ def valid_formation(
         (1, 5, 4, 1),
     ),
 ) -> bool:
-    sgk = sum(1 for p in lineup if p.position == "GK")
-    sdf = sum(1 for p in lineup if p.position == "DEF")
-    smd = sum(1 for p in lineup if p.position == "MID")
-    sfw = sum(1 for p in lineup if p.position == "FWD")
-    return (sgk, sdf, smd, sfw) in eligible
+    return (
+        sum(1 for p in lineup if p.position == "GK"),
+        sum(1 for p in lineup if p.position == "DEF"),
+        sum(1 for p in lineup if p.position == "MID"),
+        sum(1 for p in lineup if p.position == "FWD"),
+    ) in eligible
 
 
 def best_lineup(
     team: list[structures.Player],
+    size: int = 11,
 ) -> list[structures.Player]:
     return max(
-        itertools.combinations(team, 11),
-        key=lambda c: valid_formation(c) * total_xP(c),
+        itertools.combinations(team, size),
+        key=lambda c: valid_formation(c) * squad_xP(c),
     )
 
 
 def best_lineup_xP(lineup: list[structures.Player]) -> float:
-    return total_xP(best_lineup(lineup))
+    return squad_xP(best_lineup(lineup))
 
 
 def sigmoid_weights(n: int) -> list[float]:
@@ -93,11 +95,11 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
         print(f" xP    Price  Team            Player")
         for player in players:
             print(
-                f" {player.xP():<5.2f} {player.price/10:<6} {player.team:<{15}} {player.name} {'X' if player.name in best else ''}"
+                f" {player.xP():<5.2f} {player.price/10:<6} "
+                f" {player.team:<{15}} {player.name} "
+                f" {'X' if player.name in best else ''}"
             )
 
 
 def header(pool: list[structures.Player], prefix="", postfix="") -> None:
-    print(
-        f"{prefix}Price: {total_price(pool)/10} xP: {total_xP(pool):.1f} n: {len(pool)}{postfix}"
-    )
+    print(f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}")
