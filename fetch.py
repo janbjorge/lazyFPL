@@ -1,4 +1,5 @@
 import csv
+import difflib
 import io
 import itertools
 import typing as T
@@ -19,20 +20,6 @@ def bootstrap() -> dict:
     ).json()
 
 
-def player_price(name: str) -> float:
-    for element in bootstrap()["elements"]:
-        if f'{element["first_name"]} {element["second_name"]}' == name:
-            return element["now_cost"]
-    raise ValueError(f"No player named: {name}")
-
-
-def webname(name: str) -> str:
-    for element in bootstrap()["elements"]:
-        if f'{element["first_name"]} {element["second_name"]}' == name:
-            return element["web_name"]
-    raise ValueError(f"No player named: {name}")
-
-
 def position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:
@@ -45,13 +32,6 @@ def player_id(name: str) -> int:
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:
             return element["id"]
-    raise ValueError(f"No player named: {name}")
-
-
-def news(name: str) -> str:
-    for element in bootstrap()["elements"]:
-        if f'{element["first_name"]} {element["second_name"]}' == name:
-            return element["news"]
     raise ValueError(f"No player named: {name}")
 
 
@@ -78,7 +58,6 @@ def fixtures(name: str) -> list[structures.Fixture]:
     )
 
 
-@cache.fcache
 def team_name_from_id(id: int) -> str:
     for item in bootstrap()["teams"]:
         if id == item["id"]:
@@ -103,47 +82,55 @@ def team(player_name: str) -> str:
 
 
 @cache.fcache
-def players(
+def remote(
     url: str = "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-) -> tuple[structures.Player, ...]:
-    players: list[structures.Player] = []
-    for name, matches in itertools.groupby(
-        sorted(
-            csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","),
+) -> dict[str, list[dict]]:
+    return {
+        name: sorted(list(matches), key=lambda r: dt_parser(r["kickoff_time"]))
+        for name, matches in itertools.groupby(
+            sorted(
+                csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","),
+                key=lambda r: r["name"],
+            ),
             key=lambda r: r["name"],
-        ),
-        key=lambda r: r["name"],
-    ):
+        )
+    }
 
-        try:
-            price = player_price(name)
-        except ValueError:
-            continue
 
-        matches = sorted(matches, key=lambda r: dt_parser(r["kickoff_time"]))
-        players.append(
+def history(player_name: str) -> list[dict]:
+    player_name = player_name.lower()
+    for name, matches in remote().items():
+        name = name.lower()
+        if name == player_name:
+            return matches
+        if all(sub in player_name for sub in name.split()) or all(sub in name for sub in player_name.split()):
+            return matches
+    return []
+
+
+@cache.fcache
+def players() -> list[structures.Player]:
+    pool = list[structures.Player]()
+    for player in bootstrap()["elements"]:
+        full_name = f'{player["first_name"]} {player["second_name"]}'
+        matches = history(full_name)
+
+        pool.append(
             structures.Player(
-                fixutres=fixtures(name),
+                fixutres=fixtures(full_name),
                 minutes=[int(r["minutes"]) for r in matches],
-                name=name,
-                news=news(name),
+                name=full_name,
+                news=player["news"],
                 points=[int(r["total_points"]) for r in matches],
-                position=position(name),
-                price=price,
+                position=position(full_name),
+                price=int(player["now_cost"]),
                 selected=[int(r["selected"]) for r in matches],
-                team=team(name),
-                webname=webname(name),
+                team=team(full_name),
+                webname=player["web_name"],
             )
         )
 
-    return sorted(players, key=lambda x: (x.xP(), x.name))
-
-
-def player(name: str) -> structures.Player:
-    for p in players():
-        if p.name.lower() == name.lower():
-            return p
-    raise ValueError(f"Unkown name {name}")
+    return sorted(pool, key=lambda x: (x.xP(), x.price, x.name))
 
 
 if __name__ == "__main__":

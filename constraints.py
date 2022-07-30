@@ -4,7 +4,7 @@ import typing as T
 import structures
 
 
-def team_constraint(lineup: T.Sequence[structures.Player], n: int = 3) -> bool:
+def team_constraint(lineup: T.Sequence[structures.Player], n: int) -> bool:
     count = C.Counter(p.team for p in lineup)
     return max(count.values()) <= n
 
