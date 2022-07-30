@@ -27,19 +27,19 @@ def valid_formation(
         (1, 5, 4, 1),
     ),
 ) -> bool:
-    gks = sum(1 for p in lineup if p.position == "GK")
-    if gks != 1:
+    gkps = sum(1 for p in lineup if p.position == "GKP")
+    if gkps != 1:
         return False
     defs = sum(1 for p in lineup if p.position == "DEF")
-    if not (3<= defs <=5):
+    if not (3 <= defs <= 5):
         return False
-    mids =  sum(1 for p in lineup if p.position == "MID")
-    if not (3<= mids <= 5):
+    mids = sum(1 for p in lineup if p.position == "MID")
+    if not (3 <= mids <= 5):
         return False
     fwds = sum(1 for p in lineup if p.position == "FWD")
-    if not (1<=fwds <= 3):
+    if not (1 <= fwds <= 3):
         return False
-    return (gks, defs, mids, fwds) in eligible
+    return (gkps, defs, mids, fwds) in eligible
 
 
 def best_lineup(
@@ -79,7 +79,7 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
         return
 
     def position_order(position: str) -> int:
-        if position == "GK":
+        if position == "GKP":
             return 0
         if position == "DEF":
             return 1
@@ -103,10 +103,12 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
         for player in players:
             print(
                 f" {player.xP():<5.2f} {player.price/10:<6}"
-                f" {player.team:<{15}} {player.name} "
+                f" {player.team:<{15}} {player.name}({player.webname}) "
                 f" {'X' if player.name in best else ''}"
             )
 
 
 def header(pool: list[structures.Player], prefix="", postfix="") -> None:
-    print(f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}")
+    print(
+        f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}"
+    )

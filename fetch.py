@@ -26,10 +26,32 @@ def player_price(name: str) -> float:
     raise ValueError(f"No player named: {name}")
 
 
+def webname(name: str) -> str:
+    for element in bootstrap()["elements"]:
+        if f'{element["first_name"]} {element["second_name"]}' == name:
+            return element["web_name"]
+    raise ValueError(f"No player named: {name}")
+
+
+def position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
+    for element in bootstrap()["elements"]:
+        if f'{element["first_name"]} {element["second_name"]}' == name:
+            element_type = bootstrap()["element_types"][element["element_type"] - 1]
+            return element_type["singular_name_short"]
+    raise ValueError(f"No player named: {name}")
+
+
 def player_id(name: str) -> int:
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:
             return element["id"]
+    raise ValueError(f"No player named: {name}")
+
+
+def news(name: str) -> str:
+    for element in bootstrap()["elements"]:
+        if f'{element["first_name"]} {element["second_name"]}' == name:
+            return element["news"]
     raise ValueError(f"No player named: {name}")
 
 
@@ -40,7 +62,7 @@ def summary(id: int) -> dict:
     ).json()
 
 
-def fixtures(name: str) -> tuple[structures.Fixture, ...]:
+def fixtures(name: str) -> list[structures.Fixture]:
     return sorted(
         (
             structures.Fixture(
@@ -104,11 +126,13 @@ def players(
                 fixutres=fixtures(name),
                 minutes=[int(r["minutes"]) for r in matches],
                 name=name,
+                news=news(name),
                 points=[int(r["total_points"]) for r in matches],
-                position=matches[-1]["position"],
+                position=position(name),
                 price=price,
                 selected=[int(r["selected"]) for r in matches],
                 team=team(name),
+                webname=webname(name),
             )
         )
 

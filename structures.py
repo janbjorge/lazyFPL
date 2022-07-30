@@ -15,14 +15,16 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True)
 class Player:
-    fixutres: tuple[Fixture, ...] = dataclasses.field(compare=False)
+    fixutres: list[Fixture] = dataclasses.field(compare=False)
     minutes: list[int] = dataclasses.field(compare=False)
     name: str = dataclasses.field(compare=True)
+    news: str = dataclasses.field(compare=False)
     points: list[int] = dataclasses.field(compare=False)
-    position: T.Literal["GK", "DEF", "MID", "FWD"] = dataclasses.field(compare=True)
+    position: T.Literal["GKP", "DEF", "MID", "FWD"] = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=True)
     selected: list[int] = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=True)
+    webname: str = dataclasses.field(compare=False)
     _xp: T.Optional[float] = dataclasses.field(default=None, compare=False)
 
     def xP(self) -> float:

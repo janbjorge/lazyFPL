@@ -1,5 +1,4 @@
 import itertools
-import statistics
 
 from tqdm import (
     tqdm,
@@ -13,12 +12,13 @@ import structures
 def lineup(
     pool: list[structures.Player],
     buget: int = 1_000,
+    alpha: float = .99
 ):
 
     gkp_combinations = sorted(
         (
             c
-            for c in itertools.combinations((p for p in pool if p.position == "GK"), 2)
+            for c in itertools.combinations((p for p in pool if p.position == "GKP"), 2)
             if constraints.team_constraint(c, 1)
         ),
         key=helpers.squad_xP,
@@ -76,24 +76,22 @@ def lineup(
     min_cost_mid_fwd = min_cost_mid + min_cost_fwd
 
     best_squad: list[structures.Player] = []
-    best_lineup: list[structures.Player] = []
     best_defs: float = 0
-    best_mids: float = 0
     best_fwds: float = 0
     best_lineup_xp = 0
+    best_mids: float = 0
+
     step = len(mid_combinations) * len(fwd_combinations)
 
     def score_gk_def(c: list[structures.Player]) -> bool:
-        return (
-            helpers.squad_price(c) + min_cost_mid_fwd <= buget
-            and constraints.team_constraint(c, n=3)
-        )
+        return helpers.squad_price(
+            c
+        ) + min_cost_mid_fwd <= buget and constraints.team_constraint(c, n=3)
 
     def score_gk_def_mid(c: list[structures.Player]) -> bool:
-        return (
-            helpers.squad_price(c) + min_cost_fwd <= buget
-            and constraints.team_constraint(c, n=3)
-        )
+        return helpers.squad_price(
+            c
+        ) + min_cost_fwd <= buget and constraints.team_constraint(c, n=3)
 
     def score_gk_def_mid_fwd(c: list[structures.Player]) -> bool:
         return (
@@ -104,7 +102,7 @@ def lineup(
 
     with tqdm(
         total=total,
-        bar_format="{percentage:3.0f}%|{bar:20}{r_bar}",
+        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
         unit_scale=True,
         unit_divisor=1_000,
         ascii=True,
@@ -127,12 +125,26 @@ def lineup(
                                 gk_def_mid_fwd = gk_def_mid + f
                                 if score_gk_def_mid_fwd(gk_def_mid_fwd):
                                     best_lineup = helpers.best_lineup(gk_def_mid_fwd)
-                                    best_defs = sum(p.xP() for p in best_lineup if p.position == "DEF")
-                                    best_mids = sum(p.xP() for p in best_lineup if p.position == "MID")
-                                    best_fwds = sum(p.xP() for p in best_lineup if p.position == "FWD")
+                                    best_defs = sum(
+                                        p.xP()
+                                        for p in best_lineup
+                                        if p.position == "DEF"
+                                    ) * alpha
+                                    best_mids = sum(
+                                        p.xP()
+                                        for p in best_lineup
+                                        if p.position == "MID"
+                                    ) * alpha
+                                    best_fwds = sum(
+                                        p.xP()
+                                        for p in best_lineup
+                                        if p.position == "FWD"
+                                    ) * alpha
                                     best_lineup_xp = helpers.squad_xP(best_lineup)
                                     best_squad = list(gk_def_mid_fwd)
-                                    helpers.lprint(best_squad, [p.name for p in best_lineup])
+                                    helpers.lprint(
+                                        best_squad, [p.name for p in best_lineup]
+                                    )
                                     print("-->>", best_lineup_xp)
 
     return best_squad
@@ -145,23 +157,14 @@ if __name__ == "__main__":
     pool: list[structures.Player] = []
     for _, y in itertools.groupby(
         sorted(
-            (p for p in fetch.players() if p.tm > 90 * 38 * 0.25),
-            key=lambda x: (x.position, x.price, x.xP()),
+            (p for p in fetch.players() if not p.news and p.xP() > 0 and p.tm > 90 * 38 * 0.2),
+            key=lambda x: (x.position, x.price),
         ),
         key=lambda x: (x.position, x.price),
     ):
-        pool.extend(tuple(y)[:2])
-
-    # pool = [
-    #     p
-    #     for _, players in fetch.top_position_players(
-    #         strikers=0,
-    #         midfielders=0,
-    #         defenders=0,
-    #         goalkeeper=0,
-    #     )
-    #     for p in players
-    # ]
+        candidates = sorted(list(y), key=lambda x: x.xP())
+        pool.extend(candidates[-3:])
 
     helpers.lprint(pool)
-    helpers.lprint(lineup(pool=pool))
+    bl = lineup(pool=pool, alpha=0.99)
+    helpers.lprint(bl, best=[p.name for p in bl])
