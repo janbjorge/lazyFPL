@@ -1,5 +1,4 @@
 import csv
-import difflib
 import io
 import itertools
 import typing as T
@@ -103,7 +102,9 @@ def history(player_name: str) -> list[dict]:
         name = name.lower()
         if name == player_name:
             return matches
-        if all(sub in player_name for sub in name.split()) or all(sub in name for sub in player_name.split()):
+        if all(sub in player_name for sub in name.split()):
+            return matches
+        if all(sub in name for sub in player_name.split()):
             return matches
     return []
 

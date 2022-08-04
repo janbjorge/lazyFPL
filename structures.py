@@ -13,7 +13,7 @@ class Fixture:
     kickoff_time: datetime.datetime
 
 
-@dataclasses.dataclass(eq=True)
+@dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
     fixutres: list[Fixture] = dataclasses.field(compare=False)
     minutes: list[int] = dataclasses.field(compare=False)

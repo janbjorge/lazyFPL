@@ -5,7 +5,7 @@ import math
 import structures
 
 
-def squad_price(lineup: list[structures.Player]) -> int:
+def squad_price(lineup: T.Sequence[structures.Player]) -> int:
     return sum(p.price for p in lineup)
 
 
@@ -43,34 +43,20 @@ def valid_formation(
 
 
 def best_lineup(
-    team: list[structures.Player],
+    team: T.Sequence[structures.Player],
     size: int = 11,
-) -> list[structures.Player]:
+) -> tuple[structures.Player, ...]:
     return max(
         itertools.combinations(team, size),
         key=lambda c: valid_formation(c) * squad_xP(c),
     )
 
 
-def best_lineup_xP(lineup: list[structures.Player]) -> float:
+def best_lineup_xP(lineup: T.Sequence[structures.Player]) -> float:
     return squad_xP(best_lineup(lineup))
 
 
-def sigmoid_weights(n: int) -> list[float]:
-    def sig(x: float) -> float:
-        return 1 / (1 + math.exp(-x))
-
-    weights = [sig(x / n) for x in range(n)]
-    sum_weights = sum(weights)
-    return [w / sum_weights for w in weights]
-
-
-def weighted_mean(distribution: list[float], weights: list[float]) -> float:
-    assert len(distribution) == len(weights)
-    return sum(d * w for d, w in zip(distribution, weights)) / sum(weights)
-
-
-def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> None:
+def lprint(lineup: T.Sequence[structures.Player], best: T.Sequence[str] | None = None) -> None:
 
     if not best:
         best = []
@@ -91,13 +77,13 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
 
     print("", flush=True)
     header(lineup)
-    for pos, players in itertools.groupby(
+    for pos, _players in itertools.groupby(
         sorted(
-            lineup, key=lambda x: (position_order(x.position), x.xP()), reverse=True
+            lineup, key=lambda x: (position_order(x.position), x.xP()), reverse=True,
         ),
         key=lambda x: x.position,
     ):
-        players = tuple(players)
+        players = list(_players)
         header(players, prefix=f"{pos}(", postfix=")")
         print(f" xP    Price  Team            Player")
         for player in players:
@@ -108,7 +94,7 @@ def lprint(lineup: list[structures.Player], best: list[str] | None = None) -> No
             )
 
 
-def header(pool: list[structures.Player], prefix="", postfix="") -> None:
+def header(pool: T.Sequence[structures.Player], prefix="", postfix="") -> None:
     print(
         f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}"
     )
