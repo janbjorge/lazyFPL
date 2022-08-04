@@ -15,7 +15,6 @@ def candidates(
     lower_budget: int,
     upper_budget: int,
     min_xp: float,
-    caller: str,
 ) -> T.Sequence[tuple[int, float, tuple[structures.Player, ...]]]:
     xp_candidates = set[tuple[int, float, tuple[structures.Player, ...]]]()
     price_candidates = set[tuple[int, float, tuple[structures.Player, ...]]]()
@@ -24,13 +23,10 @@ def candidates(
             xp_candidates.add((price, xP, c))
         if lower_budget <= price <= upper_budget:
             price_candidates.add((price, xP, c))
-    rv = sorted(
+    return sorted(
         xp_candidates.intersection(price_candidates),
         key=lambda x: x[1],
     )
-    if caller:
-        print(caller, len(combinations), len(rv), len(rv)/len(combinations))
-    return rv
 
 
 def lineup(
@@ -92,18 +88,18 @@ def lineup(
     best_squad = tuple[structures.Player, ...]()
     best_lxp = 0.0
 
-    max_def_price = max(price for price, _, _ in def_combinations)
-    min_def_price = min(price for price, _, _ in def_combinations)
-    min_def_xp = min(xp for _, xp, _ in def_combinations)
-
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
-    min_mid_xp = min(xp for _, xp, _ in mid_combinations)
 
-    import statistics
-    fwd_leeway = statistics.stdev((xp for _, xp, _ in fwd_combinations)) * 1/2
-    mid_leeway = statistics.stdev((xp for _, xp, _ in mid_combinations)) * 1/2
-    def_leeway = statistics.stdev((xp for _, xp, _ in def_combinations)) * 1/2
+    # TODO: Test alpha=.8, any way to estimate an optimal value?
+    alpha = 0.9  # Value experimentally determined, need to allow from "some" loss
+    # in mid/def fields in order to optain an higher over all score.
+    # If the value is set to low, we end up re-checking to mutch and there
+    # is no "shortcuts" resulting in an slownes.
+    assert 0 < alpha < 1
+
+    min_xp_def = 0.0
+    min_xp_mid = 0.0
 
     with tqdm(
         total=total,
@@ -118,15 +114,13 @@ def lineup(
                     combinations=def_combinations,
                     lower_budget=budget_lower - (gp + fp + max_mid_price),
                     upper_budget=budget_upper - (gp + fp + min_mid_price),
-                    min_xp=0,
-                    caller="def_combinations",
+                    min_xp=min_xp_def,
                 ):
                     for mp, mxp, m in candidates(
                         combinations=mid_combinations,
                         lower_budget=budget_lower - (gp + fp + dp),
                         upper_budget=budget_upper - (gp + fp + dp),
-                        min_xp=best_lxp - (gxp + fxp + dxp) - mid_leeway,
-                        caller="mid_combinations",
+                        min_xp=min_xp_mid,
                     ):
                         squad = g + f + d + m
                         if (
@@ -139,10 +133,13 @@ def lineup(
                             assert gxp + fxp + dxp + mxp >= best_lxp
                             best_squad = squad
                             helpers.lprint(best_squad, [p.name for p in bl])
-                            # 63.73304186539482 9.373986486486487 11.105067567567568 21.551785714285717 25.146803315920966
-                            print("-->>", best_lxp)
+                            min_xp_def = dxp * alpha
+                            min_xp_mid = mxp * alpha
+                            print("-->>", best_lxp, min_xp_def, min_xp_mid)
                 bar.update(len(def_combinations) * len(mid_combinations))
 
+    # NOTE: without candidates(...) (26316.53seconds) xP = 66.12268150503445
+    # NOTE: with candidates(...), alpha=.9(600 seconds) xP = 65.64198652433947
     return best_squad
 
 

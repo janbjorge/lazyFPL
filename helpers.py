@@ -1,6 +1,5 @@
 import typing as T
 import itertools
-import math
 
 import structures
 
