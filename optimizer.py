@@ -10,25 +10,6 @@ import helpers
 import structures
 
 
-def candidates(
-    combinations: T.Sequence[tuple[int, float, tuple[structures.Player, ...]]],
-    lower_budget: int,
-    upper_budget: int,
-    min_xp: float,
-) -> T.Sequence[tuple[int, float, tuple[structures.Player, ...]]]:
-    xp_candidates = set[tuple[int, float, tuple[structures.Player, ...]]]()
-    price_candidates = set[tuple[int, float, tuple[structures.Player, ...]]]()
-    for price, xP, c in combinations:
-        if xP >= min_xp:
-            xp_candidates.add((price, xP, c))
-        if lower_budget <= price <= upper_budget:
-            price_candidates.add((price, xP, c))
-    return sorted(
-        xp_candidates.intersection(price_candidates),
-        key=lambda x: x[1],
-    )
-
-
 def lineup(
     pool: T.Sequence[structures.Player],
     budget_lower: int = 950,
@@ -40,8 +21,13 @@ def lineup(
             (helpers.squad_price(c), helpers.squad_xP(c), c)
             for c in itertools.combinations((p for p in pool if p.position == "GKP"), 2)
         ),
-        key=lambda x: x[1],
+        key=lambda x: x[0],
+        reverse=True,
     )
+    gkp_min_price = min(p.price for p in pool if p.position == "GKP")
+    gkp_combinations = [
+        c for c in gkp_combinations if any(p.price <= gkp_min_price for p in c[-1])
+    ]
 
     def_combinations = sorted(
         (
@@ -49,8 +35,13 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "DEF"), 5)
             if constraints.team_constraint(c, 3)
         ),
-        key=lambda x: x[1],
+        key=lambda x: x[0],
+        reverse=True,
     )
+    def_min_price = min(p.price for p in pool if p.position == "DEF")
+    def_combinations = [
+        c for c in def_combinations if any(p.price <= def_min_price for p in c[-1])
+    ]
 
     mid_combinations = sorted(
         (
@@ -59,15 +50,25 @@ def lineup(
             if constraints.team_constraint(c, 3)
         ),
         key=lambda x: x[1],
+        reverse=True,
     )
+    mid_min_price = min(p.price for p in pool if p.position == "MID")
+    mid_combinations = [
+        c for c in mid_combinations if any(p.price <= mid_min_price for p in c[-1])
+    ]
 
     fwd_combinations = sorted(
         (
             (helpers.squad_price(c), helpers.squad_xP(c), c)
             for c in itertools.combinations((p for p in pool if p.position == "FWD"), 3)
         ),
-        key=lambda x: x[1],
+        key=lambda x: x[0],
+        reverse=True,
     )
+    fwd_min_price = min(p.price for p in pool if p.position == "FWD")
+    fwd_combinations = [
+        c for c in fwd_combinations if any(p.price <= fwd_min_price for p in c[-1])
+    ]
 
     total = (
         len(gkp_combinations)
@@ -91,16 +92,6 @@ def lineup(
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
 
-    # TODO: Test alpha=.8, any way to estimate an optimal value?
-    alpha = 0.9  # Value experimentally determined, need to allow from "some" loss
-    # in mid/def fields in order to optain an higher over all score.
-    # If the value is set to low, we end up re-checking to mutch and there
-    # is no "shortcuts" resulting in an slownes.
-    assert 0 < alpha < 1
-
-    min_xp_def = 0.0
-    min_xp_mid = 0.0
-
     with tqdm(
         total=total,
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -110,55 +101,70 @@ def lineup(
     ) as bar:
         for gp, gxp, g in gkp_combinations:
             for fp, fxp, f in fwd_combinations:
-                for dp, dxp, d in candidates(
-                    combinations=def_combinations,
-                    lower_budget=budget_lower - (gp + fp + max_mid_price),
-                    upper_budget=budget_upper - (gp + fp + min_mid_price),
-                    min_xp=min_xp_def,
-                ):
-                    for mp, mxp, m in candidates(
-                        combinations=mid_combinations,
-                        lower_budget=budget_lower - (gp + fp + dp),
-                        upper_budget=budget_upper - (gp + fp + dp),
-                        min_xp=min_xp_mid,
-                    ):
+                bar.update(len(def_combinations) * len(mid_combinations))
+                for dp, dxp, d in def_combinations:
+                    # Sorted, no need to look deeper.
+                    if gp + fp + dp + max_mid_price < budget_lower:
+                        break
+                    # To pricy, fast forward to cheeper
+                    if gp + fp + dp + min_mid_price > budget_upper:
+                        continue
+
+                    for mp, mxp, m in mid_combinations:
+                        # Sorted, no need to look deeper.
+                        if gxp + fxp + dxp + mxp < best_lxp:
+                            break
+
+                        price = mp + dp + fp + gp
+
                         squad = g + f + d + m
                         if (
-                            constraints.team_constraint(squad, n=3)
-                            and budget_lower <= gp + fp + dp + mp <= budget_upper
+                            budget_lower <= price <= budget_upper
+                            and gxp + fxp + dxp + mxp >= best_lxp
+                            and constraints.team_constraint(squad, n=3)
                             and (bl := helpers.best_lineup(squad))
                             and (blxp := helpers.squad_xP(bl)) > best_lxp
                         ):
                             best_lxp = blxp
-                            assert gxp + fxp + dxp + mxp >= best_lxp
+                            # assert gxp + fxp + dxp + mxp >= best_lxp, (gxp + fxp + dxp + mxp, best_lxp)
                             best_squad = squad
                             helpers.lprint(best_squad, [p.name for p in bl])
-                            min_xp_def = dxp * alpha
-                            min_xp_mid = mxp * alpha
-                            print("-->>", best_lxp, min_xp_def, min_xp_mid)
-                bar.update(len(def_combinations) * len(mid_combinations))
+                            print("-->>", best_lxp)
 
     # NOTE: without candidates(...) (26316.53seconds) xP = 66.12268150503445
     # NOTE: with candidates(...), alpha=.9(600 seconds) xP = 65.64198652433947
+    # assert best_lxp > 66.8
     return best_squad
 
 
 if __name__ == "__main__":
-    import sys
     import fetch
 
-    n = 3 if len(sys.argv) == 1 else int(sys.argv[1])
-
-    # Top 3 players per position and price
     pool: list[structures.Player] = []
-    for _, y in itertools.groupby(
-        sorted(
-            (p for p in fetch.players() if not p.news and p.xP() > 0),
-            key=lambda x: (x.position, x.price),
-        ),
-        key=lambda x: (x.position, x.price),
-    ):
-        pool.extend(sorted(list(y), key=lambda x: x.xP())[-n:])
+
+    best_xp = set()
+    for _, z in itertools.groupby(sorted(fetch.players(), key=lambda x:x.position), key=lambda x: x.position):
+        z = sorted(z, key=lambda x:x.xP())[-30:]
+        for p in z:
+            best_xp.add(p)
+
+    shit = set()
+    for _, z in itertools.groupby(sorted(fetch.players(), key=lambda x:x.position), key=lambda x: x.position):
+        z = sorted(z, key=lambda x:x.xP())[:10]
+        for p in z:
+            shit.add(p)
+    # best_value = set(sorted(fetch.players(), key=lambda x: x.xP()/x.price)[-n:])
+    pool = best_xp.union(shit)
+    pool = [p for p in pool if not p.news]
+    # for _, players in itertools.groupby(
+    #     sorted(
+    #         (p for p in fetch.players() if not p.news and p.xP() > 0),
+    #         key=lambda x: (x.position, round(x.price / x.xP(),1))
+    #     ),
+    #     key=lambda x:  (x.position, round(x.price / x.xP(),1)),
+    # ):
+    #     candidates = sorted(list(players), key=lambda x: x.xP())
+    #     pool.extend(candidates[-n:])
 
     helpers.lprint(pool)
     squad = lineup(pool=pool)
