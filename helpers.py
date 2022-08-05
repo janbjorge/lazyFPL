@@ -12,50 +12,35 @@ def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
     return sum(p.xP() for p in lineup)
 
 
-def valid_formation(
-    lineup: T.Sequence[structures.Player],
-    eligible: tuple[tuple[int, int, int, int], ...] = (
-        # gk, def, mid, fwd
-        (1, 3, 4, 3),
-        (1, 3, 5, 2),
-        (1, 4, 3, 3),
-        (1, 4, 4, 2),
-        (1, 4, 5, 1),
-        (1, 5, 2, 3),
-        (1, 5, 3, 2),
-        (1, 5, 4, 1),
-    ),
-) -> bool:
-    gkps = sum(1 for p in lineup if p.position == "GKP")
-    if gkps != 1:
-        return False
-    defs = sum(1 for p in lineup if p.position == "DEF")
-    if not (3 <= defs <= 5):
-        return False
-    mids = sum(1 for p in lineup if p.position == "MID")
-    if not (3 <= mids <= 5):
-        return False
-    fwds = sum(1 for p in lineup if p.position == "FWD")
-    if not (1 <= fwds <= 3):
-        return False
-    return (gkps, defs, mids, fwds) in eligible
-
-
 def best_lineup(
     team: T.Sequence[structures.Player],
+    min_gkp: int = 1,
+    min_def: int = 3,
+    min_mid: int = 2,
+    min_fwd: int = 1,
     size: int = 11,
-) -> tuple[structures.Player, ...]:
-    return max(
-        itertools.combinations(team, size),
-        key=lambda c: valid_formation(c) * squad_xP(c),
+) -> list[structures.Player]:
+    team = sorted(team, key=lambda x: x.xP(), reverse=True)
+    gkps = [p for p in team if p.position == "GKP"]
+    defs = [p for p in team if p.position == "DEF"]
+    mids = [p for p in team if p.position == "MID"]
+    fwds = [p for p in team if p.position == "FWD"]
+    best = gkps[:min_gkp] + defs[:min_def] + mids[:min_mid] + fwds[:min_fwd]
+    remainder = sorted(
+        defs[min_def:] + mids[min_mid:] + fwds[min_fwd:],
+        key=lambda x: x.xP(),
+        reverse=True,
     )
+    return best + remainder[: (size - len(best))]
 
 
 def best_lineup_xP(lineup: T.Sequence[structures.Player]) -> float:
     return squad_xP(best_lineup(lineup))
 
 
-def lprint(lineup: T.Sequence[structures.Player], best: T.Sequence[str] | None = None) -> None:
+def lprint(
+    lineup: T.Sequence[structures.Player], best: T.Sequence[str] | None = None
+) -> None:
 
     if not best:
         best = []
@@ -78,7 +63,9 @@ def lprint(lineup: T.Sequence[structures.Player], best: T.Sequence[str] | None =
     header(lineup)
     for pos, _players in itertools.groupby(
         sorted(
-            lineup, key=lambda x: (position_order(x.position), x.xP()), reverse=True,
+            lineup,
+            key=lambda x: (position_order(x.position), x.xP()),
+            reverse=True,
         ),
         key=lambda x: x.position,
     ):
