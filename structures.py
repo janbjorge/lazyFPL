@@ -15,14 +15,14 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
-    fixutres: list[Fixture] = dataclasses.field(compare=False)
-    minutes: list[int] = dataclasses.field(compare=False)
+    fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
+    minutes: list[int] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=False)
-    points: list[int] = dataclasses.field(compare=False)
+    points: list[int] = dataclasses.field(compare=False, repr=False)
     position: T.Literal["GKP", "DEF", "MID", "FWD"] = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=True)
-    selected: list[int] = dataclasses.field(compare=False)
+    selected: list[int] = dataclasses.field(compare=False, repr=False)
     team: str = dataclasses.field(compare=True)
     webname: str = dataclasses.field(compare=False)
     _xp: T.Optional[float] = dataclasses.field(default=None, compare=False)
