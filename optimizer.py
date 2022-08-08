@@ -1,5 +1,5 @@
+import argparse
 import itertools
-import statistics
 import typing as T
 
 from tqdm import (
@@ -7,6 +7,7 @@ from tqdm import (
 )
 
 import constraints
+import fetch
 import helpers
 import structures
 
@@ -19,11 +20,12 @@ def lineup(
     min_xp_def_combination: float = 20.0,
     min_xp_mid_combination: float = 25.0,
     min_xp_fwd_combination: float = 7.0,
-    # min_xp_gkp_combination: float = 0,
-    # min_xp_def_combination: float = 0,
-    # min_xp_mid_combination: float = 0,
-    # min_xp_fwd_combination: float = 0,
+    min_gxp: float = 80.0,
+    min_lxp: float = 70.0,
+    min_lxp_gxp_ratio: float = 0.9,
 ) -> T.Sequence[structures.Player]:
+
+    min_lxp = min_gxp * min_lxp_gxp_ratio
 
     gkp_combinations = sorted(
         (
@@ -48,7 +50,7 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "DEF"), 5)
             if constraints.team_constraint(c, 3)
         ),
-        key=lambda x: x[0],
+        key=lambda x: x[1],
         reverse=True,
     )
     def_combinations = [c for c in def_combinations if c[1] > min_xp_def_combination]
@@ -91,12 +93,13 @@ def lineup(
         return []
 
     best_squad = tuple[structures.Player, ...]()
-    best_lxp = 60.0
-    gxp = 70.0
+    best_lxp = min_lxp
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
     max_mid_xp = max(xp for _, xp, _ in mid_combinations)
+
+    max_def_xp = max(xp for _, xp, _ in def_combinations)
 
     with tqdm(
         total=total,
@@ -108,15 +111,20 @@ def lineup(
         for gp, gxp, g in gkp_combinations:
             for fp, fxp, f in fwd_combinations:
                 bar.update(len(def_combinations) * len(mid_combinations))
+                if gxp + fxp + max_mid_xp + max_def_xp < min_gxp:
+                    continue
                 for dp, dxp, d in def_combinations:
 
-                    if gp + fp + dp + max_mid_price < budget_lower:
+                    if gxp + fxp + dxp + max_mid_xp < min_gxp:
                         break
 
-                    if gp + fp + dp + min_mid_price > budget_upper:
+                    # if min_lxp / (gxp + fxp + dxp + min_mid_xp) < min_lxp_gxp_ratio:
+                    #     continue
+
+                    if gp + fp + dp + max_mid_price < budget_lower:
                         continue
 
-                    if (gxp + fxp + dxp + max_mid_xp) < gxp:
+                    if gp + fp + dp + min_mid_price > budget_upper:
                         continue
 
                     if not constraints.team_constraint(g + f + d, n=4):
@@ -124,7 +132,7 @@ def lineup(
 
                     for mp, mxp, m in mid_combinations:
 
-                        if (gxp + fxp + dxp + mxp) < gxp:
+                        if gxp + fxp + dxp + mxp < min_gxp:
                             break
 
                         if (
@@ -138,7 +146,7 @@ def lineup(
                             best_squad = squad
                             helpers.lprint(best_squad, [p.name for p in bl])
                             print(
-                                f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f} "
+                                f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}"
                             )
 
     # NOTE: without candidates(...) (26316.53seconds) xP = 66.12268150503445
@@ -148,41 +156,65 @@ def lineup(
     return best_squad
 
 
-if __name__ == "__main__":
-    import statistics
-    import fetch
+def position_price_candidates(topn: int = 5) -> T.Sequence[structures.Player]:
 
     pool: list[structures.Player] = []
-    for position, _position_candidates in itertools.groupby(
+
+    for _, players in itertools.groupby(
         sorted(
-            [
+            (
                 p
                 for p in fetch.players()
-                if not p.news and p.xP() > 0
-            ],
-            key=lambda x: x.position,
+                if not p.news and p.xP() > 0 and p.tm > 38 * 45
+            ),
+            key=lambda x: (x.position, x.price),
         ),
-        key=lambda x: x.position,
+        key=lambda x: (x.position, x.price),
     ):
-        position_candidates = sorted(list(_position_candidates), key=lambda x: x.xP())
-        cut = statistics.mean(p.xP() for p in position_candidates) + statistics.stdev(p.xP() for p in position_candidates)
-        pool.extend([p for p in position_candidates if p.xP() > cut])
-        pool.extend([p for p in position_candidates if p.xP() <= cut][:5])
-
-    # for _, players in itertools.groupby(
-    #     sorted(
-    #         (p for p in fetch.players() if not p.news and p.xP() > 0),
-    #         key=lambda x: (x.position, round(x.price / x.xP(),1))
-    #     ),
-    #     key=lambda x:  (x.position, round(x.price / x.xP(),1)),
-    # ):
-    #     candidates = sorted(list(players), key=lambda x: x.xP())
-    #     pool.extend(candidates[-n:]
+        candidates = sorted(list(players), key=lambda x: x.xP(), reverse=True)
+        pool.extend(candidates[:topn])
 
     # Just in case.
-    pool = list(set(pool))
+    return list(set(pool))
 
+
+def main():
+    parser = argparse.ArgumentParser(prog="Lineup optimizer")
+
+    parser.add_argument("--budget_lower", type=int, default=950)
+    parser.add_argument("--budget_upper", type=int, default=1_000)
+
+    parser.add_argument("--min_xp_gkp_combination", type=float, default=4.0)
+    parser.add_argument("--min_xp_def_combination", type=float, default=20.0)
+    parser.add_argument("--min_xp_mid_combination", type=float, default=25.0)
+    parser.add_argument("--min_xp_fwd_combination", type=float, default=7.0)
+
+    parser.add_argument("--min_gxp", type=float, default=70.0)
+    parser.add_argument("--min_lxp", type=float, default=60.0)
+    parser.add_argument("--min_lxp_gxp_ratio", type=float, default=0.75)
+
+    parser.add_argument("--top_position_price_candidates", type=int, default=5)
+
+    args = parser.parse_args()
+
+    pool = position_price_candidates(topn=args.top_position_price_candidates)
     helpers.lprint(pool)
-    squad = lineup(pool=pool)
+    squad = lineup(
+        pool=pool,
+        budget_lower=args.budget_lower,
+        budget_upper=args.budget_upper,
+        min_xp_gkp_combination=args.min_xp_gkp_combination,
+        min_xp_def_combination=args.min_xp_def_combination,
+        min_xp_fwd_combination=args.min_xp_fwd_combination,
+        min_xp_mid_combination=args.min_xp_mid_combination,
+        min_gxp=args.min_gxp,
+        min_lxp=args.min_lxp,
+        min_lxp_gxp_ratio=args.min_lxp_gxp_ratio,
+    )
+
     helpers.lprint(squad, best=[p.name for p in helpers.best_lineup(squad)])
     print("-->>", helpers.best_lineup_xP(squad))
+
+
+if __name__ == "__main__":
+    main()

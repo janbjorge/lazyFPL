@@ -81,11 +81,11 @@ def team(player_name: str) -> str:
 
 
 @cache.fcache
-def remote(
-    url: str = "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-) -> dict[str, list[dict]]:
+def remote(url: str) -> dict[str, list[dict]]:
     return {
-        name: sorted(list(matches), key=lambda r: dt_parser(r["kickoff_time"]))
+        name: sorted(
+            list(matches), key=lambda r: dt_parser(r["kickoff_time"]), reverse=True
+        )
         for name, matches in itertools.groupby(
             sorted(
                 csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","),
@@ -96,20 +96,27 @@ def remote(
     }
 
 
+@cache.fcache
 def history(player_name: str) -> list[dict]:
     player_name = player_name.lower()
-    for name, matches in remote().items():
-        name = name.lower()
-        if name == player_name:
-            return matches
-        if all(sub in player_name for sub in name.split()):
-            return matches
-        if all(sub in name for sub in player_name.split()):
-            return matches
-    return []
+    urls = (
+        # "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
+        # "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2020-21/gws/merged_gw.csv",
+    )
+    matches = []
+    for url in urls:
+        for name, session_matches in remote(url).items():
+            name = name.lower()
+            if (
+                name == player_name
+                or all(sub in player_name for sub in name.split())
+                or all(sub in name for sub in player_name.split())
+            ):
+                matches.extend(session_matches)
+    return sorted(matches, key=lambda r: dt_parser(r["kickoff_time"]), reverse=True)
 
 
-@cache.fcache
 def players() -> list[structures.Player]:
     pool = list[structures.Player]()
     for player in bootstrap()["elements"]:
@@ -131,7 +138,7 @@ def players() -> list[structures.Player]:
             )
         )
 
-    return sorted(pool, key=lambda x: (x.xP(), x.price, x.name))
+    return sorted(pool, key=lambda x: (x.xP(), x.price, x.team, x.name))
 
 
 if __name__ == "__main__":

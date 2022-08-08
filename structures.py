@@ -27,11 +27,13 @@ class Player:
     webname: str = dataclasses.field(compare=False)
     _xp: T.Optional[float] = dataclasses.field(default=None, compare=False)
 
-    def xP(self, n: int = 3) -> float:
+    def xP(self, ndifficulty: int = 3, nmean: int = 10) -> float:
         if not self.points:
             return 0
         if self._xp is None:
-            self._xp = statistics.mean(self.points) / self.upcoming_difficulty(n=n)
+            self._xp = statistics.mean(self.points[:nmean]) / self.upcoming_difficulty(
+                n=ndifficulty
+            )
         return self._xp
 
     @property
