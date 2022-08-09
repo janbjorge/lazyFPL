@@ -1,6 +1,7 @@
 import csv
 import io
 import itertools
+import os
 import typing as T
 
 import requests
@@ -32,6 +33,13 @@ def player_id(name: str) -> int:
         if f'{element["first_name"]} {element["second_name"]}' == name:
             return element["id"]
     raise ValueError(f"No player named: {name}")
+
+
+def player_name(pid: int) -> str:
+    for element in bootstrap()["elements"]:
+        if element["id"] == pid:
+            return f'{element["first_name"]} {element["second_name"]}'
+    raise ValueError(f"No player named: {pid}")
 
 
 @cache.fcache
@@ -138,6 +146,20 @@ def players() -> list[structures.Player]:
         )
 
     return sorted(pool, key=lambda x: (x.xP(), x.price, x.team, x.name))
+
+
+def my_team(
+    team_id: str = "3483226",
+    pl_profile: str = os.environ.get("FPL_COOKIE", ""),
+) -> T.Sequence[structures.Player]:
+    if not pl_profile:
+        raise ValueError("Missing `FPL_COOKIE`.")
+    team = requests.get(
+        f"https://fantasy.premierleague.com/api/my-team/{team_id}/",
+        cookies={"pl_profile": pl_profile},
+    ).json()
+    names = set(player_name(pick["element"]) for pick in team["picks"])
+    return [p for p in players() if p.name in names]
 
 
 if __name__ == "__main__":

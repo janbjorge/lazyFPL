@@ -50,3 +50,11 @@ class Player:
 
     def upcoming_difficulty(self, n: int = 3) -> float:
         return sum(f.difficulty for f in self.fixutres[:n]) / (3 * n)
+
+
+@dataclasses.dataclass(frozen=True)
+class Squad:
+    lineup: T.Sequence[Player]
+    gxp: float
+    lxp: float
+    price: int
