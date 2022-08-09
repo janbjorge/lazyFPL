@@ -100,9 +100,8 @@ def remote(url: str) -> dict[str, list[dict]]:
 def history(player_name: str) -> list[dict]:
     player_name = player_name.lower()
     urls = (
-        # "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-        # "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2020-21/gws/merged_gw.csv",
     )
     matches = []
     for url in urls:
