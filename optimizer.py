@@ -164,7 +164,7 @@ def position_price_candidates(topn: int = 5) -> T.Sequence[structures.Player]:
         ),
         key=lambda x: (x.position, x.price),
     ):
-        candidates = sorted(list(players), key=lambda x: x.xP(), reverse=True)
+        candidates = sorted(list(players), key=lambda x: x.xP, reverse=True)
         pool.extend(candidates[:topn])
 
     # Just in case.

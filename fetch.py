@@ -1,4 +1,5 @@
 import csv
+import functools
 import io
 import itertools
 import os
@@ -14,10 +15,12 @@ import structures
 
 
 @cache.fcache
+def get(url: str) -> requests.Response:
+    return requests.get(url)
+
+
 def bootstrap() -> dict:
-    return requests.get(
-        "https://fantasy.premierleague.com/api/bootstrap-static/"
-    ).json()
+    return get("https://fantasy.premierleague.com/api/bootstrap-static/").json()
 
 
 def position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
@@ -42,14 +45,13 @@ def player_name(pid: int) -> str:
     raise ValueError(f"No player named: {pid}")
 
 
-@cache.fcache
 def summary(id: int) -> dict:
-    return requests.get(
+    return get(
         f"https://fantasy.premierleague.com/api/element-summary/{id}/"
     ).json()
 
 
-def fixtures(name: str) -> list[structures.Fixture]:
+def upcoming_fixutres(name: str) -> list[structures.Fixture]:
     return sorted(
         (
             structures.Fixture(
@@ -65,6 +67,7 @@ def fixtures(name: str) -> list[structures.Fixture]:
     )
 
 
+@functools.cache
 def team_name_from_id(id: int) -> str:
     for item in bootstrap()["teams"]:
         if id == item["id"]:
@@ -72,7 +75,7 @@ def team_name_from_id(id: int) -> str:
     raise ValueError(f"No team name: {id}")
 
 
-def team(player_name: str) -> str:
+def current_team(player_name: str) -> str:
 
     match = None
     for item in bootstrap()["elements"]:
@@ -88,15 +91,15 @@ def team(player_name: str) -> str:
     raise ValueError(f"No team name: {player_name}")
 
 
-@cache.fcache
+@functools.cache
 def remote(url: str) -> dict[str, list[dict]]:
     return {
         name: sorted(
-            list(matches), key=lambda r: dt_parser(r["kickoff_time"]), reverse=True
+            list(matches), key=lambda r: dt_parser(r["kickoff_time"]), reverse=True,
         )
         for name, matches in itertools.groupby(
             sorted(
-                csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","),
+                csv.DictReader(io.StringIO(get(url).text), delimiter=","),
                 key=lambda r: r["name"],
             ),
             key=lambda r: r["name"],
@@ -104,8 +107,7 @@ def remote(url: str) -> dict[str, list[dict]]:
     }
 
 
-@cache.fcache
-def history(player_name: str) -> list[dict]:
+def past_matches(player_name: str) -> list[dict]:
     player_name = player_name.lower()
     urls = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
@@ -124,28 +126,38 @@ def history(player_name: str) -> list[dict]:
     return sorted(matches, key=lambda r: dt_parser(r["kickoff_time"]), reverse=True)
 
 
+@cache.fcache
 def players() -> list[structures.Player]:
     pool = list[structures.Player]()
     for player in bootstrap()["elements"]:
         full_name = f'{player["first_name"]} {player["second_name"]}'
-        matches = history(full_name)
+        pm = past_matches(full_name)
+
+        backtrace = 3
+        # Missing historical data for: {full_name}, setting xP=0,"
+        if len(past_points:=[int(r["total_points"]) for r in pm]) > backtrace:
+            upcoming_difficulty = sum(f.difficulty for f in upcoming_fixutres(full_name)[:backtrace]) / (3 * backtrace)
+            xp = helpers.xP(past_points=past_points, backtrace=backtrace) / upcoming_difficulty
+        else:
+            xp = 0
 
         pool.append(
             structures.Player(
-                fixutres=fixtures(full_name),
-                minutes=[int(r["minutes"]) for r in matches],
+                fixutres=upcoming_fixutres(full_name),
+                minutes=[int(r["minutes"]) for r in pm],
                 name=full_name,
                 news=player["news"],
-                points=[int(r["total_points"]) for r in matches],
+                points=[int(r["total_points"]) for r in pm],
                 position=position(full_name),
                 price=int(player["now_cost"]),
-                selected=[int(r["selected"]) for r in matches],
-                team=team(full_name),
+                selected=[int(r["selected"]) for r in pm],
+                team=current_team(full_name),
                 webname=player["web_name"],
+                xP=xp,
             )
         )
 
-    return sorted(pool, key=lambda x: (x.xP(), x.price, x.team, x.name))
+    return sorted(pool, key=lambda x: (x.xP, x.price, x.team, x.name))
 
 
 def my_team(

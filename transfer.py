@@ -22,11 +22,11 @@ def transfer(
     if (
         done_transfers == max_transfers
         and helpers.squad_price(current) <= budget
-        and helpers.best_lineup_xP(current) > best_lxp
         and constraints.team_constraint(current, n=3)
+        and helpers.best_lineup_xP(current) > best_lxp
     ):
         return current
-    elif done_transfers > max_transfers:
+    elif done_transfers >= max_transfers:
         return []
 
     if done_transfers == 0:
@@ -40,16 +40,16 @@ def transfer(
     else:
         _pool = pool
 
-    for transfer_in in _pool:
+    for t_in in _pool:
         for idx, _ in enumerate(current):
 
-            out = current[idx]
+            t_out = current[idx]
 
-            if transfer_in.name == out.name or transfer_in.position != out.position:
+            if t_in.position != t_out.position:
                 continue
 
             tmp = current.copy()
-            tmp[idx] = transfer_in
+            tmp[idx] = t_in
 
             best = (
                 transfer(
@@ -78,7 +78,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    pool = sorted(fetch.players(), key=lambda x: x.xP(), reverse=True)[: args.topn]
+    pool = sorted(fetch.players(), key=lambda x: x.xP, reverse=True)[: args.topn]
     print(f"pool size: {len(pool)}")
     team = list(fetch.my_team())
     best = transfer(
@@ -96,7 +96,7 @@ def main() -> None:
     max_len_out_name = max(len(p.name) for p in transfers_out)
     for t_out, t_in in zip(transfers_in, transfers_out):
         print(
-            f"{t_out.name:<{max_len_out_name}}({t_out.xP():.2f})  -->>  {t_in.name}({t_in.xP():.2f})"
+            f"{t_out.name:<{max_len_out_name}}({t_out.xP:.2f})  -->>  {t_in.name}({t_in.xP:.2f})"
         )
 
     print(

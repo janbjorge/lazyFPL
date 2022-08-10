@@ -1,6 +1,8 @@
 import typing as T
 import itertools
 
+import numpy as np
+
 import structures
 
 
@@ -9,7 +11,7 @@ def squad_price(lineup: T.Sequence[structures.Player]) -> int:
 
 
 def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
-    return sum(p.xP() for p in lineup)
+    return sum(p.xP for p in lineup)
 
 
 def best_lineup(
@@ -20,7 +22,7 @@ def best_lineup(
     min_fwd: int = 1,
     size: int = 11,
 ) -> list[structures.Player]:
-    team = sorted(team, key=lambda x: x.xP(), reverse=True)
+    team = sorted(team, key=lambda x: x.xP, reverse=True)
     gkps = [p for p in team if p.position == "GKP"]
     defs = [p for p in team if p.position == "DEF"]
     mids = [p for p in team if p.position == "MID"]
@@ -28,7 +30,7 @@ def best_lineup(
     best = gkps[:min_gkp] + defs[:min_def] + mids[:min_mid] + fwds[:min_fwd]
     remainder = sorted(
         defs[min_def:] + mids[min_mid:] + fwds[min_fwd:],
-        key=lambda x: x.xP(),
+        key=lambda x: x.xP,
         reverse=True,
     )
     return best + remainder[: (size - len(best))]
@@ -64,7 +66,7 @@ def lprint(
     for pos, _players in itertools.groupby(
         sorted(
             lineup,
-            key=lambda x: (position_order(x.position), x.xP()),
+            key=lambda x: (position_order(x.position), x.xP),
             reverse=True,
         ),
         key=lambda x: x.position,
@@ -74,7 +76,7 @@ def lprint(
         print(f" xP    Price  Team            Player")
         for player in players:
             print(
-                f" {player.xP():<5.2f} {player.price/10:<6}"
+                f" {player.xP:<5.2f} {player.price/10:<6}"
                 f" {player.team:<{15}} {player.name}({player.webname}) "
                 f" {'X' if player.name in best else ''}"
             )
@@ -84,3 +86,32 @@ def header(pool: T.Sequence[structures.Player], prefix="", postfix="") -> None:
     print(
         f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}"
     )
+
+
+def xP(
+    past_points: list[float],
+    backtrace: int = 3,
+) -> float:
+    past_points = past_points.copy()
+    m = list[tuple[float, list[float]]]()
+
+    while past_points and len(past_points) > backtrace:
+        infur = past_points.pop(0)
+        m.append((infur, past_points[:backtrace]))
+
+    coef, *_ = np.linalg.lstsq(
+        np.array([x for _, x in m]),
+        np.array([t for t, _ in m]),
+        rcond=None,
+    )
+
+    # for target, past in m:
+    #     xp = np.array(past).dot(coef.T)
+    #     print(f"t: {target:<2.0f} xP: {xp:<4.1f} past: {past} accPast: {sum(past)} accxP: {(xp * backtrace):.2f} mean: {(mean * backtrace):.2f}")
+    # print(m)
+    # print(coef)
+    # print(coef.sum())
+    # print(np.array(m[0][1]))
+    # print(np.array(m[0][1]).dot(coef.T))
+
+    return np.array(m[0][1]).dot(coef.T)
