@@ -159,11 +159,7 @@ def position_price_candidates(topn: int = 5) -> T.Sequence[structures.Player]:
 
     for _, players in itertools.groupby(
         sorted(
-            (
-                p
-                for p in fetch.players()
-                if not p.news
-            ),
+            (p for p in fetch.players() if not p.news),
             key=lambda x: (x.position, x.price),
         ),
         key=lambda x: (x.position, x.price),

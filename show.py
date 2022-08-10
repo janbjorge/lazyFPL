@@ -6,5 +6,5 @@ if __name__ == "__main__":
         print(
             f"{p.xP():<6.2f} {p.price:<6.1f} {p.tp:<4} "
             f"{p.upcoming_difficulty():<5.1f} {p.team:<15} "
-            f"{p.position:<8}  {p.name}"
+            f"{p.position:<8}  {p.name}({p.webname})"
         )
