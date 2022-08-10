@@ -89,13 +89,13 @@ def header(pool: T.Sequence[structures.Player], prefix="", postfix="") -> None:
 
 
 def xP(
-    past_points: list[float],
+    past_points: list[int],
     backtrace: int = 3,
 ) -> float:
 
     inference, train = past_points[:backtrace], past_points[backtrace:]
     assert len(train) >= backtrace
-    m = list[tuple[float, list[float]]]()
+    m = list[tuple[int, list[int]]]()
 
     while train and len(train) > backtrace:
         target = train.pop(0)

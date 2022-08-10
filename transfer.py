@@ -29,6 +29,8 @@ def transfer(
     elif done_transfers >= max_transfers:
         return []
 
+    pool = [p for p in pool if p not in current]
+
     if done_transfers == 0:
         _pool = tqdm(
             pool,
@@ -81,6 +83,7 @@ def main() -> None:
     pool = sorted(fetch.players(), key=lambda x: x.xP, reverse=True)[: args.topn]
     print(f"pool size: {len(pool)}")
     team = list(fetch.my_team())
+    helpers.lprint(team, best=[p.name for p in helpers.best_lineup(team)])
     best = transfer(
         current=team,
         best=team,
@@ -102,6 +105,7 @@ def main() -> None:
     print(
         f"lxp gain: {(helpers.best_lineup_xP(best) - helpers.best_lineup_xP(team)):.2f}"
     )
+    helpers.lprint(best, best=[p.name for p in helpers.best_lineup(best)])
 
 
 if __name__ == "__main__":

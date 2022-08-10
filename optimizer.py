@@ -20,12 +20,10 @@ def lineup(
     min_xp_def_combination: float = 20.0,
     min_xp_mid_combination: float = 20.0,
     min_xp_fwd_combination: float = 0.0,
-    min_lxp: float = 100.0,
-    min_gxp_lxp_ratio: float = 1.05,
+    min_gxp_lxp_ratio: float = 1.1,
 ) -> T.Sequence[structures.Player]:
 
-    assert min_gxp_lxp_ratio > 1
-    min_gxp = min_lxp * min_gxp_lxp_ratio
+    assert min_gxp_lxp_ratio >= 1
 
     gkp_combinations = sorted(
         (
@@ -93,7 +91,15 @@ def lineup(
         return []
 
     best_squad = tuple[structures.Player, ...]()
-    best_lxp = min_lxp
+    min_gxp = sum(
+        (
+            max(xp for _, xp, _ in gkp_combinations),
+            max(xp for _, xp, _ in def_combinations),
+            max(xp for _, xp, _ in mid_combinations),
+            max(xp for _, xp, _ in fwd_combinations),
+        )
+    )
+    best_lxp = min_gxp / min_gxp_lxp_ratio
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
@@ -139,20 +145,22 @@ def lineup(
                             if (
                                 budget_lower <= mp + dp + fp + gp <= budget_upper
                                 and gxp + fxp + dxp + mxp >= best_lxp
-                                and constraints.team_constraint(squad := g + f + d + m, n=3)
+                                and constraints.team_constraint(
+                                    squad := g + f + d + m, n=3
+                                )
                                 and (bl := helpers.best_lineup(squad))
                                 and (blxp := helpers.squad_xP(bl)) > best_lxp
                             ):
                                 best_lxp = blxp
                                 best_squad = squad
                                 min_gxp = best_lxp * min_gxp_lxp_ratio
-                                assert min_gxp > best_lxp
+                                assert min_gxp >= best_lxp
                                 helpers.lprint(best_squad, [p.name for p in bl])
                                 print(
                                     f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}, min_gxp={min_gxp:.2f}"
                                 )
-        best_lxp *= .95
-        min_gxp *= .95
+            best_lxp *= 0.95
+            min_gxp *= 0.95
 
     return best_squad
 
@@ -189,7 +197,6 @@ def main():
     parser.add_argument("--min_xp_mid_combination", type=float, default=20.0)
     parser.add_argument("--min_xp_fwd_combination", type=float, default=0.0)
 
-    parser.add_argument("--min_lxp", type=float, default=60.0)
     parser.add_argument("--min_gxp_lxp_ratio", type=float, default=1.1)
 
     parser.add_argument("--top_position_price_candidates", type=int, default=5)
@@ -219,7 +226,6 @@ def main():
         min_xp_def_combination=args.min_xp_def_combination,
         min_xp_fwd_combination=args.min_xp_fwd_combination,
         min_xp_mid_combination=args.min_xp_mid_combination,
-        min_lxp=args.min_lxp,
         min_gxp_lxp_ratio=args.min_gxp_lxp_ratio,
     )
 

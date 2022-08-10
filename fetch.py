@@ -46,9 +46,7 @@ def player_name(pid: int) -> str:
 
 
 def summary(id: int) -> dict:
-    return get(
-        f"https://fantasy.premierleague.com/api/element-summary/{id}/"
-    ).json()
+    return get(f"https://fantasy.premierleague.com/api/element-summary/{id}/").json()
 
 
 def upcoming_fixutres(name: str) -> list[structures.Fixture]:
@@ -95,7 +93,9 @@ def current_team(player_name: str) -> str:
 def remote(url: str) -> dict[str, list[dict]]:
     return {
         name: sorted(
-            list(matches), key=lambda r: dt_parser(r["kickoff_time"]), reverse=True,
+            list(matches),
+            key=lambda r: dt_parser(r["kickoff_time"]),
+            reverse=True,
         )
         for name, matches in itertools.groupby(
             sorted(
@@ -135,9 +135,14 @@ def players() -> list[structures.Player]:
 
         backtrace = 3
         # Missing historical data for: {full_name}, setting xP=0,"
-        if len(past_points:=[int(r["total_points"]) for r in pm]) > backtrace:
-            upcoming_difficulty = sum(f.difficulty for f in upcoming_fixutres(full_name)[:backtrace]) / (3 * backtrace)
-            xp = helpers.xP(past_points=past_points, backtrace=backtrace) / upcoming_difficulty
+        if len(past_points := [int(r["total_points"]) for r in pm]) > backtrace:
+            upcoming_difficulty = sum(
+                f.difficulty for f in upcoming_fixutres(full_name)[:backtrace]
+            ) / (3 * backtrace)
+            xp = (
+                helpers.xP(past_points=past_points, backtrace=backtrace)
+                / upcoming_difficulty
+            )
         else:
             xp = 0
 
