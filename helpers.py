@@ -92,12 +92,14 @@ def xP(
     past_points: list[float],
     backtrace: int = 3,
 ) -> float:
-    past_points = past_points.copy()
+
+    inference, train = past_points[:backtrace], past_points[backtrace:]
+    assert len(train) >= backtrace
     m = list[tuple[float, list[float]]]()
 
-    while past_points and len(past_points) > backtrace:
-        infur = past_points.pop(0)
-        m.append((infur, past_points[:backtrace]))
+    while train and len(train) > backtrace:
+        target = train.pop(0)
+        m.append((target, train[:backtrace]))
 
     coef, *_ = np.linalg.lstsq(
         np.array([x for _, x in m]),
@@ -105,13 +107,4 @@ def xP(
         rcond=None,
     )
 
-    # for target, past in m:
-    #     xp = np.array(past).dot(coef.T)
-    #     print(f"t: {target:<2.0f} xP: {xp:<4.1f} past: {past} accPast: {sum(past)} accxP: {(xp * backtrace):.2f} mean: {(mean * backtrace):.2f}")
-    # print(m)
-    # print(coef)
-    # print(coef.sum())
-    # print(np.array(m[0][1]))
-    # print(np.array(m[0][1]).dot(coef.T))
-
-    return np.array(m[0][1]).dot(coef.T)
+    return np.array(inference).dot(coef.T)
