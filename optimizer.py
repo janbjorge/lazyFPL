@@ -16,12 +16,12 @@ def lineup(
     pool: T.Sequence[structures.Player],
     budget_lower: int = 950,
     budget_upper: int = 1_000,
-    min_xp_gkp_combination: float = 3.0,
+    min_xp_gkp_combination: float = 0.0,
     min_xp_def_combination: float = 20.0,
     min_xp_mid_combination: float = 20.0,
-    min_xp_fwd_combination: float = 5.0,
-    min_lxp: float = 60.0,
-    min_gxp_lxp_ratio: float = 1.1,
+    min_xp_fwd_combination: float = 0.0,
+    min_lxp: float = 100.0,
+    min_gxp_lxp_ratio: float = 1.05,
 ) -> T.Sequence[structures.Player]:
 
     assert min_gxp_lxp_ratio > 1
@@ -108,47 +108,51 @@ def lineup(
         unit_divisor=1_000,
         ascii=True,
     ) as bar:
-        for gp, gxp, g in gkp_combinations:
-            for fp, fxp, f in fwd_combinations:
-                bar.update(len(def_combinations) * len(mid_combinations))
+        while not best_squad:
+            bar.clear()
+            for gp, gxp, g in gkp_combinations:
+                for fp, fxp, f in fwd_combinations:
+                    bar.update(len(def_combinations) * len(mid_combinations))
 
-                if gxp + fxp + max_def_xp + max_mid_xp < min_gxp:
-                    continue
-
-                for dp, dxp, d in def_combinations:
-
-                    if gxp + fxp + dxp + max_mid_xp < min_gxp:
-                        break
-
-                    if gp + fp + dp + max_mid_price < budget_lower:
+                    if gxp + fxp + max_def_xp + max_mid_xp < min_gxp:
                         continue
 
-                    if gp + fp + dp + min_mid_price > budget_upper:
-                        continue
+                    for dp, dxp, d in def_combinations:
 
-                    if not constraints.team_constraint(g + f + d, n=4):
-                        continue
-
-                    for mp, mxp, m in mid_combinations:
-
-                        if gxp + fxp + dxp + mxp < min_gxp:
+                        if gxp + fxp + dxp + max_mid_xp < min_gxp:
                             break
 
-                        if (
-                            budget_lower <= mp + dp + fp + gp <= budget_upper
-                            and gxp + fxp + dxp + mxp >= best_lxp
-                            and constraints.team_constraint(squad := g + f + d + m, n=3)
-                            and (bl := helpers.best_lineup(squad))
-                            and (blxp := helpers.squad_xP(bl)) > best_lxp
-                        ):
-                            best_lxp = blxp
-                            best_squad = squad
-                            min_gxp = best_lxp * min_gxp_lxp_ratio
-                            assert min_gxp > best_lxp
-                            # helpers.lprint(best_squad, [p.name for p in bl])
-                            print(
-                                f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}"
-                            )
+                        if gp + fp + dp + max_mid_price < budget_lower:
+                            continue
+
+                        if gp + fp + dp + min_mid_price > budget_upper:
+                            continue
+
+                        if not constraints.team_constraint(g + f + d, n=4):
+                            continue
+
+                        for mp, mxp, m in mid_combinations:
+
+                            if gxp + fxp + dxp + mxp < min_gxp:
+                                break
+
+                            if (
+                                budget_lower <= mp + dp + fp + gp <= budget_upper
+                                and gxp + fxp + dxp + mxp >= best_lxp
+                                and constraints.team_constraint(squad := g + f + d + m, n=3)
+                                and (bl := helpers.best_lineup(squad))
+                                and (blxp := helpers.squad_xP(bl)) > best_lxp
+                            ):
+                                best_lxp = blxp
+                                best_squad = squad
+                                min_gxp = best_lxp * min_gxp_lxp_ratio
+                                assert min_gxp > best_lxp
+                                helpers.lprint(best_squad, [p.name for p in bl])
+                                print(
+                                    f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}, min_gxp={min_gxp:.2f}"
+                                )
+        best_lxp *= .95
+        min_gxp *= .95
 
     return best_squad
 
@@ -180,10 +184,10 @@ def main():
     parser.add_argument("--budget_lower", type=int, default=950)
     parser.add_argument("--budget_upper", type=int, default=1_000)
 
-    parser.add_argument("--min_xp_gkp_combination", type=float, default=5.0)
+    parser.add_argument("--min_xp_gkp_combination", type=float, default=0.0)
     parser.add_argument("--min_xp_def_combination", type=float, default=20.0)
     parser.add_argument("--min_xp_mid_combination", type=float, default=20.0)
-    parser.add_argument("--min_xp_fwd_combination", type=float, default=10.0)
+    parser.add_argument("--min_xp_fwd_combination", type=float, default=0.0)
 
     parser.add_argument("--min_lxp", type=float, default=60.0)
     parser.add_argument("--min_gxp_lxp_ratio", type=float, default=1.1)
