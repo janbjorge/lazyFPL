@@ -6,22 +6,22 @@ import numpy as np
 import structures
 
 
-def squad_price(lineup: T.Sequence[structures.Player]) -> int:
+def squad_price(lineup: T.Sequence["structures.Player"]) -> int:
     return sum(p.price for p in lineup)
 
 
-def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
+def squad_xP(lineup: T.Sequence["structures.Player"]) -> float:
     return sum(p.xP for p in lineup)
 
 
 def best_lineup(
-    team: T.Sequence[structures.Player],
+    team: T.Sequence["structures.Player"],
     min_gkp: int = 1,
     min_def: int = 3,
     min_mid: int = 2,
     min_fwd: int = 1,
     size: int = 11,
-) -> list[structures.Player]:
+) -> list["structures.Player"]:
     team = sorted(team, key=lambda x: x.xP, reverse=True)
     gkps = [p for p in team if p.position == "GKP"]
     defs = [p for p in team if p.position == "DEF"]
@@ -36,12 +36,12 @@ def best_lineup(
     return best + remainder[: (size - len(best))]
 
 
-def best_lineup_xP(lineup: T.Sequence[structures.Player]) -> float:
+def best_lineup_xP(lineup: T.Sequence["structures.Player"]) -> float:
     return squad_xP(best_lineup(lineup))
 
 
 def lprint(
-    lineup: T.Sequence[structures.Player], best: T.Sequence[str] | None = None
+    lineup: T.Sequence["structures.Player"], best: T.Sequence[str] | None = None
 ) -> None:
 
     if not best:
@@ -61,7 +61,6 @@ def lprint(
             return 3
         raise NotImplementedError(position)
 
-    print("", flush=True)
     header(lineup)
     for pos, _players in itertools.groupby(
         sorted(
@@ -82,7 +81,7 @@ def lprint(
             )
 
 
-def header(pool: T.Sequence[structures.Player], prefix="", postfix="") -> None:
+def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None:
     print(
         f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}"
     )

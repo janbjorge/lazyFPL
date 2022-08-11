@@ -1,7 +1,9 @@
-import statistics
 import dataclasses
-import typing as T
 import datetime
+import statistics
+import typing as T
+
+import helpers
 
 
 @dataclasses.dataclass(frozen=True)
@@ -25,7 +27,20 @@ class Player:
     selected: list[int] = dataclasses.field(compare=False, repr=False)
     team: str = dataclasses.field(compare=True)
     webname: str = dataclasses.field(compare=False)
-    xP: float = dataclasses.field(compare=False)
+    xP: float = dataclasses.field(compare=False, init=False)
+
+    def __post_init__(self):
+        backtrace = 3
+        lookahead = 3
+        # Missing historical data for: {full_name}, setting xP=0,"
+        if len(self.points) > backtrace:
+            self.xP = helpers.xP(past_points=self.points, backtrace=backtrace)
+            self.xP /= self.upcoming_difficulty(lookahead)
+        elif self.points:
+            self.xP = statistics.mean(self.points)
+            self.xP /= self.upcoming_difficulty(lookahead)
+        else:
+            self.xP = 0
 
     @property
     def tp(self) -> int:

@@ -81,9 +81,13 @@ def main() -> None:
     args = parser.parse_args()
 
     pool = sorted(fetch.players(), key=lambda x: x.xP, reverse=True)[: args.topn]
-    print(f"pool size: {len(pool)}")
+    print(">>> Pool")
+    helpers.lprint(pool)
+
+    print("\n>>>> Current team")
     team = list(fetch.my_team())
     helpers.lprint(team, best=[p.name for p in helpers.best_lineup(team)])
+
     best = transfer(
         current=team,
         best=team,
@@ -93,19 +97,24 @@ def main() -> None:
         done_transfers=0,
         max_transfers=args.max_transfers,
     )
-    transfers_out = sorted((p for p in best if p not in team), key=lambda x: x.position)
-    transfers_in = sorted((p for p in team if p not in best), key=lambda x: x.position)
+    transfers_in = sorted((p for p in best if p not in team), key=lambda x: x.position)
+    transfers_out = sorted((p for p in team if p not in best), key=lambda x: x.position)
 
-    max_len_out_name = max(len(p.name) for p in transfers_out)
-    for t_out, t_in in zip(transfers_in, transfers_out):
+    max_len_in_name = max(len(p.webname) for p in transfers_in)
+    max_len_in_team = max(len(p.team) for p in transfers_in)
+
+    max_len_out_name = max(len(p.webname) for p in transfers_out)
+    max_len_out_team = max(len(p.team) for p in transfers_out)
+    print("\n>>>> Suggest transfers")
+    for o, i in zip(transfers_out, transfers_in):
         print(
-            f"{t_out.name:<{max_len_out_name}}({t_out.xP:.2f})  -->>  {t_in.name}({t_in.xP:.2f})"
+            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:.2f}"
+            "  -->>  "
+            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
-
     print(
         f"lxp gain: {(helpers.best_lineup_xP(best) - helpers.best_lineup_xP(team)):.2f}"
     )
-    helpers.lprint(best, best=[p.name for p in helpers.best_lineup(best)])
 
 
 if __name__ == "__main__":

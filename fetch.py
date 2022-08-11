@@ -15,12 +15,10 @@ import structures
 
 
 @cache.fcache
-def get(url: str) -> requests.Response:
-    return requests.get(url)
-
-
 def bootstrap() -> dict:
-    return get("https://fantasy.premierleague.com/api/bootstrap-static/").json()
+    return requests.get(
+        "https://fantasy.premierleague.com/api/bootstrap-static/"
+    ).json()
 
 
 def position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
@@ -45,8 +43,11 @@ def player_name(pid: int) -> str:
     raise ValueError(f"No player named: {pid}")
 
 
+@cache.fcache
 def summary(id: int) -> dict:
-    return get(f"https://fantasy.premierleague.com/api/element-summary/{id}/").json()
+    return requests.get(
+        f"https://fantasy.premierleague.com/api/element-summary/{id}/"
+    ).json()
 
 
 def upcoming_fixutres(name: str) -> list[structures.Fixture]:
@@ -89,17 +90,13 @@ def current_team(player_name: str) -> str:
     raise ValueError(f"No team name: {player_name}")
 
 
-@functools.cache
-def remote(url: str) -> dict[str, list[dict]]:
+@cache.fcache
+def remote_csv(url: str) -> dict[str, list[dict]]:
     return {
-        name: sorted(
-            list(matches),
-            key=lambda r: dt_parser(r["kickoff_time"]),
-            reverse=True,
-        )
+        name: list(matches)
         for name, matches in itertools.groupby(
             sorted(
-                csv.DictReader(io.StringIO(get(url).text), delimiter=","),
+                csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","),
                 key=lambda r: r["name"],
             ),
             key=lambda r: r["name"],
@@ -107,15 +104,17 @@ def remote(url: str) -> dict[str, list[dict]]:
     }
 
 
-def past_matches(player_name: str) -> list[dict]:
-    player_name = player_name.lower()
-    urls = (
+def past_matches(
+    player_name: str,
+    urls: tuple[str, ...] = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-    )
+    ),
+) -> list[dict]:
+    player_name = player_name.lower()
     matches = []
     for url in urls:
-        for name, session_matches in remote(url).items():
+        for name, session_matches in remote_csv(url).items():
             name = name.lower()
             if (
                 name == player_name
@@ -126,26 +125,11 @@ def past_matches(player_name: str) -> list[dict]:
     return sorted(matches, key=lambda r: dt_parser(r["kickoff_time"]), reverse=True)
 
 
-@cache.fcache
 def players() -> list[structures.Player]:
     pool = list[structures.Player]()
     for player in bootstrap()["elements"]:
         full_name = f'{player["first_name"]} {player["second_name"]}'
         pm = past_matches(full_name)
-
-        backtrace = 3
-        # Missing historical data for: {full_name}, setting xP=0,"
-        if len(past_points := [int(r["total_points"]) for r in pm]) > backtrace:
-            upcoming_difficulty = sum(
-                f.difficulty for f in upcoming_fixutres(full_name)[:backtrace]
-            ) / (3 * backtrace)
-            xp = (
-                helpers.xP(past_points=past_points, backtrace=backtrace)
-                / upcoming_difficulty
-            )
-        else:
-            xp = 0
-
         pool.append(
             structures.Player(
                 fixutres=upcoming_fixutres(full_name),
@@ -158,17 +142,18 @@ def players() -> list[structures.Player]:
                 selected=[int(r["selected"]) for r in pm],
                 team=current_team(full_name),
                 webname=player["web_name"],
-                xP=xp,
             )
         )
-
     return sorted(pool, key=lambda x: (x.xP, x.price, x.team, x.name))
 
 
+@cache.fcache
 def my_team(
-    team_id: str = "3483226",
+    team_id: str = os.environ.get("FPL_TEAMID", ""),
     pl_profile: str = os.environ.get("FPL_COOKIE", ""),
 ) -> T.Sequence[structures.Player]:
+    if not team_id:
+        raise ValueError("Missing `FPL_TEAMID`.")
     if not pl_profile:
         raise ValueError("Missing `FPL_COOKIE`.")
     team = requests.get(
