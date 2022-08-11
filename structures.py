@@ -36,8 +36,8 @@ class Player:
         if len(self.points) > backtrace:
             self.xP = helpers.xP(past_points=self.points, backtrace=backtrace)
             self.xP /= self.upcoming_difficulty(lookahead)
-        elif self.points:
-            self.xP = statistics.mean(self.points)
+        elif 0 < len(self.points) <= backtrace:
+            self.xP = statistics.median(self.points) / backtrace
             self.xP /= self.upcoming_difficulty(lookahead)
         else:
             self.xP = 0

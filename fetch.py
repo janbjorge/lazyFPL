@@ -1,3 +1,4 @@
+import concurrent.futures
 import csv
 import functools
 import io
@@ -125,26 +126,30 @@ def past_matches(
     return sorted(matches, key=lambda r: dt_parser(r["kickoff_time"]), reverse=True)
 
 
+def _player(player: dict[str, str]) -> structures.Player:
+    full_name = f'{player["first_name"]} {player["second_name"]}'
+    pm = past_matches(full_name)
+    return structures.Player(
+        fixutres=upcoming_fixutres(full_name),
+        minutes=[int(r["minutes"]) for r in pm],
+        name=full_name,
+        news=player["news"],
+        points=[int(r["total_points"]) for r in pm],
+        position=position(full_name),
+        price=int(player["now_cost"]),
+        selected=[int(r["selected"]) for r in pm],
+        team=current_team(full_name),
+        webname=player["web_name"],
+    )
+
+
 def players() -> list[structures.Player]:
-    pool = list[structures.Player]()
-    for player in bootstrap()["elements"]:
-        full_name = f'{player["first_name"]} {player["second_name"]}'
-        pm = past_matches(full_name)
-        pool.append(
-            structures.Player(
-                fixutres=upcoming_fixutres(full_name),
-                minutes=[int(r["minutes"]) for r in pm],
-                name=full_name,
-                news=player["news"],
-                points=[int(r["total_points"]) for r in pm],
-                position=position(full_name),
-                price=int(player["now_cost"]),
-                selected=[int(r["selected"]) for r in pm],
-                team=current_team(full_name),
-                webname=player["web_name"],
-            )
-        )
-    return sorted(pool, key=lambda x: (x.xP, x.price, x.team, x.name))
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=int(os.environ.get("FPL_MAX_WORKERS", "4"))
+    ) as executor:
+        jobs = [executor.submit(_player, ele) for ele in bootstrap()["elements"]]
+        ppool = [job.result() for job in concurrent.futures.as_completed(jobs)]
+    return sorted(ppool, key=lambda x: (x.xP, x.price, x.team, x.name))
 
 
 @cache.fcache
