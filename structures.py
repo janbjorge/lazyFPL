@@ -17,6 +17,7 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
+    coefficients: tuple[float, ...] = dataclasses.field(compare=False, init=False)
     fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
     minutes: list[int] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
@@ -34,12 +35,14 @@ class Player:
         lookahead = 3
         # Missing historical data for: {full_name}, setting xP=0,"
         if len(self.points) > backtrace:
-            self.xP = helpers.xP(past_points=self.points, backtrace=backtrace)
+            self.coefficients, self.xP = helpers.xP(past_points=self.points, backtrace=backtrace,)
             self.xP /= self.upcoming_difficulty(lookahead)
         elif 0 < len(self.points) <= backtrace:
+            self.coefficients = tuple()
             self.xP = statistics.median(self.points) / backtrace
             self.xP /= self.upcoming_difficulty(lookahead)
         else:
+            self.coefficients = tuple()
             self.xP = 0
 
     @property

@@ -90,7 +90,7 @@ def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None
 def xP(
     past_points: list[int],
     backtrace: int = 3,
-) -> float:
+) -> tuple[tuple[float, ...], float]:
 
     inference, train = past_points[:backtrace], past_points[backtrace:]
     assert len(train) >= backtrace
@@ -106,4 +106,4 @@ def xP(
         rcond=None,
     )
 
-    return np.array(inference).dot(coef.T)
+    return tuple(round(c, 3) for c in coef), np.array(inference).dot(coef.T)
