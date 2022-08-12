@@ -1,9 +1,10 @@
-import sqlite3
+from dateutil.parser import parse as dt_parser
 import csv
 import functools
 import io
 import os
 import pathlib
+import sqlite3
 
 import requests
 
@@ -92,7 +93,7 @@ def structure():
         CREATE TABLE game (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             is_home INTEGER NOT NULL,
-            kickoff TEXT NOT NULL,
+            kickoff REAL NOT NULL,
             minutes INTEGER NOT NULL,
             opponent INTEGER NOT NULL,
             player TEXT NOT NULL,
@@ -171,7 +172,7 @@ def populate_games():
                 sql,
                 (
                     game["was_home"],
-                    game["kickoff_time"],
+                    dt_parser(game["kickoff_time"]).timestamp(),
                     game["minutes"],
                     session,
                     team_lookup(int(game["opponent_team"]), session),
@@ -195,11 +196,7 @@ def populate_games():
     )
 
 
-def populate():
-    populate_teams()
-    populate_games()
-
-
 if __name__ == "__main__":
     structure()
-    populate()
+    populate_teams()
+    populate_games()
