@@ -1,8 +1,11 @@
 import fetch
 
 if __name__ == "__main__":
-    print("xP     Price  TP   UD    Team            Position  Player"+
-    " " * 15 + "Coefficients")
+    print(
+        "xP     Price  TP   UD    Team            Position  Player"
+        + " " * 15
+        + "Coefficients"
+    )
     for p in fetch.players():
         print(
             f"{p.xP:<6.2f} {p.price:<6.1f} {p.tp:<4} "

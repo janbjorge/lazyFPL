@@ -35,7 +35,10 @@ class Player:
         lookahead = 3
         # Missing historical data for: {full_name}, setting xP=0,"
         if len(self.points) > backtrace:
-            self.coefficients, self.xP = helpers.xP(past_points=self.points, backtrace=backtrace,)
+            self.coefficients, self.xP = helpers.xP(
+                past_points=self.points,
+                backtrace=backtrace,
+            )
             self.xP /= self.upcoming_difficulty(lookahead)
         elif 0 < len(self.points) <= backtrace:
             self.coefficients = tuple()

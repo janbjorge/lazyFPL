@@ -153,6 +153,13 @@ def players() -> list[structures.Player]:
 
 
 @cache.fcache
+def master_team_list(
+    url="https://github.com/vaastav/Fantasy-Premier-League/blob/master/data/master_team_list.csv",
+) -> list[dict]:
+    return list(csv.DictReader(io.StringIO(requests.get(url).text), delimiter=","))
+
+
+@cache.fcache
 def my_team(
     team_id: str = os.environ.get("FPL_TEAMID", ""),
     pl_profile: str = os.environ.get("FPL_COOKIE", ""),
