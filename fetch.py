@@ -69,6 +69,7 @@ def upcoming_fixutres(name: str) -> list[structures.Fixture]:
 
 @functools.cache
 def team_name_from_id(id: int) -> str:
+    assert isinstance(id, int)
     for item in bootstrap()["teams"]:
         if id == item["id"]:
             return item["name"]
