@@ -9,52 +9,77 @@ import helpers
 @dataclasses.dataclass(frozen=True)
 class Fixture:
     at_home: bool
-    away: str
-    difficulty: int
-    home: str
     kickoff_time: datetime.datetime
+    minutes: T.Optional[int]
+    opponent: str
+    points: T.Optional[int]
+    session: T.Literal["2021-22", "2022-23"]
+    team: str
+    upcoming: bool
+    team_strength_attack_home: int
+    team_strength_attack_away: int
+    team_strength_defence_home: int
+    team_strength_defence_away: int
+    team_strength_overall_home: int
+    team_strength_overall_away: int
+    opponent_strength_attack_home: int
+    opponent_strength_attack_away: int
+    opponent_strength_defence_home: int
+    opponent_strength_defence_away: int
+    opponent_strength_overall_home: int
+    opponent_trength_overall_away: int
+
+    @property
+    def ratio(self) -> float:
+        if self.at_home:
+            ad = self.team_strength_attack_home / self.opponent_strength_defence_away
+            da = self.team_strength_defence_home / self.opponent_strength_attack_away
+            return ad + da
+        else:
+            ad = self.team_strength_attack_away / self.opponent_strength_defence_home
+            da = self.team_strength_defence_away / self.opponent_strength_attack_home
+            return ad + da
 
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
     coefficients: tuple[float, ...] = dataclasses.field(compare=False, init=False)
     fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
-    minutes: list[int] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=False)
-    points: list[int] = dataclasses.field(compare=False, repr=False)
     position: T.Literal["GKP", "DEF", "MID", "FWD"] = dataclasses.field(compare=False)
-    price: int = dataclasses.field(compare=True)
-    selected: list[int] = dataclasses.field(compare=False, repr=False)
-    team: str = dataclasses.field(compare=True)
-    webname: str = dataclasses.field(compare=False)
+    price: int = dataclasses.field(compare=False)
+    team: str = dataclasses.field(compare=False)
+    webname: str = dataclasses.field(compare=True)
     xP: float = dataclasses.field(compare=False, init=False)
 
     def __post_init__(self):
         backtrace = 3
         lookahead = 3
         # Missing historical data for: {full_name}, setting xP=0,"
-        if len(self.points) > backtrace:
+        points = [f.points for f in self.fixutres if f.points is not None]
+        if len(points) > backtrace:
             self.coefficients, self.xP = helpers.xP(
-                past_points=self.points,
+                past_points=points,
                 backtrace=backtrace,
             )
-            self.xP /= self.upcoming_difficulty(lookahead)
-        elif 0 < len(self.points) <= backtrace:
+            self.xP *= self.upcoming_difficulty(lookahead)
+        elif 0 < len(points) <= backtrace:
             self.coefficients = tuple()
-            self.xP = statistics.median(self.points) / backtrace
-            self.xP /= self.upcoming_difficulty(lookahead)
+            self.xP = statistics.median([f.points for f in self.fixutres if f.points is not None]) / backtrace
+            self.xP *= self.upcoming_difficulty(lookahead)
         else:
             self.coefficients = tuple()
             self.xP = 0
 
     @property
     def tp(self) -> int:
-        return sum(self.points)
+        return sum(f.points for f in self.fixutres if f.points and f.session == "2022-23")
 
     @property
     def tm(self) -> int:
-        return sum(self.minutes)
+        return sum(f.minutes for f in self.fixutres if f.minutes and f.session == "2022-23")
 
     def upcoming_difficulty(self, n: int = 3) -> float:
-        return sum(f.difficulty for f in self.fixutres[:n]) / (3 * n)
+        nfixutres = [f for f in self.fixutres if f.upcoming][:n]
+        return sum(f.ratio for f in nfixutres) / (2 * n)

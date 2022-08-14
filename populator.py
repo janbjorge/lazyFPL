@@ -67,12 +67,13 @@ def past_game_lists() -> dict[str, list[dict]]:
     }
 
 
-def structure():
+def structure() -> None:
     database.execute(
         """
         CREATE TABLE team (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            web_team_id INTEGER NOT NULL,
             session TEXT NOT NULL,
             strength_attack_away INTEGER NOT NULL,
             strength_attack_home INTEGER NOT NULL,
@@ -86,37 +87,52 @@ def structure():
     )
     database.execute(
         """
+        CREATE TABLE player (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            webname TEXT NOT NULL,
+            name TEXT NOT NULL,
+            price INTEGER NOT NULL,
+            team_id INTEGER NOT NULL,
+            FOREIGN KEY(team_id) REFERENCES team(id),
+            UNIQUE(webname, name, team_id)
+        );
+    """
+    )
+    database.execute(
+        """
         CREATE TABLE game (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             is_home INTEGER NOT NULL,
             kickoff REAL NOT NULL,
             minutes INTEGER,
             opponent INTEGER NOT NULL,
-            player TEXT NOT NULL,
+            player_id INTEGER NOT NULL,
             points INTEGER,
             position TEXT NOT NULL,
             session TEXT NOT NULL,
             team INTEGER NOT NULL,
             upcoming INTEGER NOT NULL,
-            FOREIGN KEY(team) REFERENCES team(id),
-            FOREIGN KEY(opponent) REFERENCES team(id)
+            FOREIGN KEY(opponent) REFERENCES team(id),
+            FOREIGN KEY(player_id) REFERENCES player(id),
+            FOREIGN KEY(team) REFERENCES team(id)
         );
     """
     )
 
 
-def populate_teams():
+def populate_teams() -> None:
     sql = """
         INSERT INTO team (
             name,
             session,
+            web_team_id,
             strength_attack_away,
             strength_attack_home,
             strength_defence_away,
             strength_defence_home,
             strength_overall_away,
             strength_overall_home
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     """
     for session, teams in past_team_lists().items():
         for team in teams:
@@ -125,6 +141,7 @@ def populate_teams():
                 (
                     team["name"],
                     session,
+                    team["id"],
                     team["strength_attack_away"],
                     team["strength_attack_home"],
                     team["strength_defence_away"],
@@ -135,34 +152,57 @@ def populate_teams():
             )
 
 
-def populate_games():
+def populate_players(session: T.Literal["2022-23"] = "2022-23") -> None:
     sql = """
+        INSERT INTO player(
+            webname,
+            name,
+            price,
+            team_id
+        ) VALUES (
+            ?, ?, ?,
+            (SELECT id FROM team WHERE session = ? AND web_team_id = ?)
+        );
+    """
+    for ele in tqdm(
+        bootstrap()["elements"],
+        ascii=True,
+        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+        unit_divisor=1_000,
+        unit_scale=True,
+    ):
+        database.execute(
+            sql,
+            (
+                ele["web_name"],
+                f'{ele["first_name"]} {ele["second_name"]}',
+                ele["now_cost"],
+                session,
+                ele["team"],
+            ),
+        )
+
+
+def populate_games(current_session="2022-23") -> None:
+    game_sql = """
         INSERT INTO game (
+            session,
+            upcoming,
             is_home,
+
             kickoff,
             minutes,
-
-            opponent,
-            player,
             points,
 
-            team,
             position,
-            session,
-            upcoming
+            player_id,
+            team,
+            opponent
         ) VALUES (
-            ?,
-            ?,
-            ?,
-
+            ?, ?, ?, ?, ?, ?, ?,
+            (SELECT id FROM player WHERE name = ?),
             (SELECT id FROM team WHERE session = ? AND name = ?),
-            ?,
-            ?,
-
-            (SELECT id FROM team WHERE session = ? AND name = ?),
-            ?,
-            ?,
-            ?
+            (SELECT id FROM team WHERE session = ? AND name = ?)
         );
     """
     for session, games in past_game_lists().items():
@@ -173,23 +213,27 @@ def populate_games():
             unit_divisor=1_000,
             unit_scale=True,
         ):
-            database.execute(
-                sql,
-                (
-                    game["was_home"],
-                    dt_parser(game["kickoff_time"]).timestamp(),
-                    game["minutes"],
-                    session,
-                    past_team_lookup(int(game["opponent_team"]), session),
-                    game["name"],
-                    game["total_points"],
-                    session,
-                    game["team"],
-                    game["position"],
-                    session,
-                    False,
-                ),
-            )
+            try:
+                database.execute(
+                    game_sql,
+                    (
+                        session,
+                        False,
+                        game["was_home"],
+                        dt_parser(game["kickoff_time"]).timestamp(),
+                        game["minutes"],
+                        game["total_points"],
+                        game["position"],
+                        game["name"],
+                        session,
+                        game["team"],
+                        session,
+                        past_team_lookup(int(game["opponent_team"]), session),
+                    ),
+                )
+            except database.sqlite3.IntegrityError:
+                # The player does not play this year.
+                continue
     database.execute(
         """
         UPDATE
@@ -201,12 +245,9 @@ def populate_games():
     """
     )
 
-    bootstrap = requests.get(
-        "https://fantasy.premierleague.com/api/bootstrap-static/"
-    ).json()
-    session = "2022-23"
+    upcoming_games = {e["id"] for e in bootstrap()["events"] if not e["is_previous"]}
     for ele in tqdm(
-        bootstrap["elements"],
+        bootstrap()["elements"],
         ascii=True,
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
         unit_divisor=1_000,
@@ -215,24 +256,29 @@ def populate_games():
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
         team = upcoming_team_id_to_name(ele["team"])
         for upcoming in summary(ele["id"])["fixtures"]:
+            # A past game, data allready logged.
+            if upcoming["event"] not in upcoming_games:
+                print(upcoming["event"], dt_parser(upcoming["kickoff_time"]))
+                continue
             team_h = upcoming_team_id_to_name(upcoming["team_h"])
             team_a = upcoming_team_id_to_name(upcoming["team_a"])
             is_home = team == team_h
+            opponent = list({team, team_a, team_h} - {team})[0]
             database.execute(
-                sql,
+                game_sql,
                 (
-                    is_home,
-                    dt_parser(upcoming["kickoff_time"]).timestamp(),
-                    None,
-                    session,
-                    team_a if is_home else team_h,
-                    fullname,
-                    None,
-                    session,
-                    team,
-                    upcoming_position(fullname),
-                    session,
+                    current_session,
                     True,
+                    is_home,
+                    dt_parser(upcoming["kickoff_time"]),
+                    None,
+                    None,
+                    upcoming_position(fullname),
+                    fullname,
+                    current_session,
+                    team,
+                    current_session,
+                    opponent,
                 ),
             )
 
@@ -257,4 +303,5 @@ def upcoming_position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
 if __name__ == "__main__":
     structure()
     populate_teams()
+    populate_players()
     populate_games()

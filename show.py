@@ -6,7 +6,7 @@ if __name__ == "__main__":
         + " " * 15
         + "Coefficients"
     )
-    for p in fetch.players():
+    for p in sorted(fetch.players(), key=lambda x: x.xP):
         print(
             f"{p.xP:<6.2f} {p.price:<6.1f} {p.tp:<4} "
             f"{p.upcoming_difficulty():<5.1f} {p.team:<15} "
