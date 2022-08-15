@@ -58,7 +58,12 @@ def players() -> list[structures.Player]:
             )
             for game in sorted(games, key=lambda x: x.kickoff)
         ]
-        team = [g for g in games if g.upcoming][0].team
+
+        try:
+            team = [g for g in games if g.upcoming][0].team
+        except IndexError:
+            continue
+    
         pool.append(
             structures.Player(
                 fixutres=fixtures,

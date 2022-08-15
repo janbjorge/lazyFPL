@@ -254,33 +254,33 @@ def populate_games(current_session="2022-23") -> None:
         unit_scale=True,
     ):
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
+        if ele["news"]:
+            continue
         team = upcoming_team_id_to_name(ele["team"])
         for upcoming in summary(ele["id"])["fixtures"]:
             # A past game, data allready logged.
-            if upcoming["event"] not in upcoming_games:
-                print(upcoming["event"], dt_parser(upcoming["kickoff_time"]))
-                continue
-            team_h = upcoming_team_id_to_name(upcoming["team_h"])
-            team_a = upcoming_team_id_to_name(upcoming["team_a"])
-            is_home = team == team_h
-            opponent = list({team, team_a, team_h} - {team})[0]
-            database.execute(
-                game_sql,
-                (
-                    current_session,
-                    True,
-                    is_home,
-                    dt_parser(upcoming["kickoff_time"]),
-                    None,
-                    None,
-                    upcoming_position(fullname),
-                    fullname,
-                    current_session,
-                    team,
-                    current_session,
-                    opponent,
-                ),
-            )
+            if upcoming["event"] in upcoming_games:
+                team_h = upcoming_team_id_to_name(upcoming["team_h"])
+                team_a = upcoming_team_id_to_name(upcoming["team_a"])
+                is_home = team == team_h
+                opponent = list({team, team_a, team_h} - {team})[0]
+                database.execute(
+                    game_sql,
+                    (
+                        current_session,
+                        True,
+                        is_home,
+                        dt_parser(upcoming["kickoff_time"]).timestamp(),
+                        None,
+                        None,
+                        upcoming_position(fullname),
+                        fullname,
+                        current_session,
+                        team,
+                        current_session,
+                        opponent,
+                    ),
+                )
 
 
 @functools.cache

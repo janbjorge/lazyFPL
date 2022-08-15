@@ -1,6 +1,5 @@
 import dataclasses
 import datetime
-import statistics
 import typing as T
 
 import helpers
@@ -34,11 +33,17 @@ class Fixture:
         if self.at_home:
             ad = self.team_strength_attack_home / self.opponent_strength_defence_away
             da = self.team_strength_defence_home / self.opponent_strength_attack_away
-            return ad + da
+            oa = self.team_strength_overall_home / self.opponent_trength_overall_away
+            return ad * da * oa
         else:
             ad = self.team_strength_attack_away / self.opponent_strength_defence_home
             da = self.team_strength_defence_away / self.opponent_strength_attack_home
-            return ad + da
+            oa = self.team_strength_overall_away / self.opponent_strength_overall_home
+            return ad * da * oa
+
+    @property
+    def adjusted_points(self) -> float:
+        return self.points / self.ratio if self.points else 0.0
 
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
@@ -56,17 +61,13 @@ class Player:
     def __post_init__(self):
         backtrace = 3
         lookahead = 3
+
         # Missing historical data for: {full_name}, setting xP=0,"
-        points = [f.points for f in self.fixutres if f.points is not None]
-        if len(points) > backtrace:
+        if sum(not f.upcoming for f in self.fixutres) > backtrace:
             self.coefficients, self.xP = helpers.xP(
-                past_points=points,
+                fixtures=self.fixutres,
                 backtrace=backtrace,
             )
-            self.xP *= self.upcoming_difficulty(lookahead)
-        elif 0 < len(points) <= backtrace:
-            self.coefficients = tuple()
-            self.xP = statistics.median([f.points for f in self.fixutres if f.points is not None]) / backtrace
             self.xP *= self.upcoming_difficulty(lookahead)
         else:
             self.coefficients = tuple()
@@ -82,4 +83,4 @@ class Player:
 
     def upcoming_difficulty(self, n: int = 3) -> float:
         nfixutres = [f for f in self.fixutres if f.upcoming][:n]
-        return sum(f.ratio for f in nfixutres) / (2 * n)
+        return sum(f.ratio for f in nfixutres)

@@ -1,5 +1,5 @@
-import typing as T
 import itertools
+import typing as T
 
 import numpy as np
 
@@ -88,17 +88,20 @@ def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None
 
 
 def xP(
-    past_points: list[int],
+    fixtures: list["structures.Fixture"],
     backtrace: int = 3,
 ) -> tuple[tuple[float, ...], float]:
 
-    inference, train = past_points[:backtrace], past_points[backtrace:]
-    assert len(train) >= backtrace
-    m = list[tuple[int, list[int]]]()
+    fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
+    # time --->
+    train = [f for f in fixtures if not f.upcoming]
 
-    while train and len(train) > backtrace:
-        target = train.pop(0)
-        m.append((target, train[:backtrace]))
+    assert len(train) >= backtrace
+    m = list[tuple[float, list[float]]]()
+
+    while len(train) > backtrace:
+        target = train.pop(-1)
+        m.append((target.adjusted_points, [t.adjusted_points for t in train[-backtrace:]]))
 
     coef, *_ = np.linalg.lstsq(
         np.array([x for _, x in m]),
@@ -106,4 +109,9 @@ def xP(
         rcond=None,
     )
 
-    return tuple(round(c, 3) for c in coef), np.array(inference).dot(coef.T)
+    upcoming_difficulty = sum([f.ratio for f in fixtures if f.upcoming][:backtrace])
+    assert upcoming_difficulty > 0
+
+    inference = train[-backtrace:]
+    inferred = np.array([i.adjusted_points for i in inference]).dot(coef.T) / upcoming_difficulty
+    return tuple(round(c, 3) for c in coef), inferred
