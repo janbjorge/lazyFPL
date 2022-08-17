@@ -27,11 +27,10 @@ def players() -> list[structures.Player]:
 
     pool = list[structures.Player]()
 
-    rows = sorted(
-        database.games(),
-        key=lambda x: x.player_id,
-    )
-    for name, _games in itertools.groupby(rows, lambda x: x.player):
+    for (name, webname), _games in itertools.groupby(
+        sorted(database.games(), key=lambda x: (x.player, x.webname)),
+        lambda x: (x.player, x.webname),
+    ):
         games = list(sorted(_games, key=lambda x: x.kickoff))
         fixtures = [
             structures.Fixture(
@@ -39,10 +38,12 @@ def players() -> list[structures.Player]:
                 kickoff_time=game.kickoff,
                 minutes=game.minutes,
                 opponent=game.opponent,
+                player=name,
                 points=game.points,
                 session=game.session,
                 team=game.team,
                 upcoming=game.upcoming,
+                webname=webname,
                 team_strength_attack_home=game.team_strength_attack_home,
                 team_strength_attack_away=game.team_strength_attack_away,
                 team_strength_defence_home=game.team_strength_defence_home,
@@ -56,23 +57,23 @@ def players() -> list[structures.Player]:
                 opponent_strength_overall_home=game.opponent_strength_overall_home,
                 opponent_trength_overall_away=game.opponent_trength_overall_away,
             )
-            for game in sorted(games, key=lambda x: x.kickoff)
+            for game in games
         ]
 
         try:
-            team = [g for g in games if g.upcoming][0].team
+            team = [g for g in games if g.upcoming][-1].team
         except IndexError:
             continue
-    
+
         pool.append(
             structures.Player(
                 fixutres=fixtures,
                 name=name,
                 news="",
-                position=games[0].position,
-                price=database.price(games[0].player_id),
+                position=games[-1].position,
+                price=database.price(games[-1].player_id),
                 team=team,
-                webname=database.webname(games[0].player_id),
+                webname=database.webname(games[-1].player_id),
             )
         )
     return pool

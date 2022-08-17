@@ -24,6 +24,36 @@ def summary(id: int) -> dict:
     ).json()
 
 
+@functools.cache
+def db_name_pid() -> dict[str, int]:
+    return {
+        row["name"]: row["id"]
+        for row in database.execute(
+            """
+        SELECT
+            id,
+            name
+        FROM
+            player
+    """
+        )
+    }
+
+
+@functools.cache
+def player_id_fuzzer(name: str) -> int:
+    name = name.lower()
+    for dname, pid in db_name_pid().items():
+        dname = dname.lower()
+        if dname == name:
+            pid
+        if all(n in dname for n in name.split()):
+            return pid
+        if all(n in name for n in dname.split()):
+            return pid
+    raise KeyError(name)
+
+
 def past_team_lists() -> dict[str, list[dict]]:
     urls = (
         (
@@ -200,7 +230,7 @@ def populate_games(current_session="2022-23") -> None:
             opponent
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
-            (SELECT id FROM player WHERE name = ?),
+            ?,
             (SELECT id FROM team WHERE session = ? AND name = ?),
             (SELECT id FROM team WHERE session = ? AND name = ?)
         );
@@ -214,6 +244,10 @@ def populate_games(current_session="2022-23") -> None:
             unit_scale=True,
         ):
             try:
+                pid = player_id_fuzzer(game["name"])
+            except KeyError:
+                continue
+            try:
                 database.execute(
                     game_sql,
                     (
@@ -224,7 +258,7 @@ def populate_games(current_session="2022-23") -> None:
                         game["minutes"],
                         game["total_points"],
                         game["position"],
-                        game["name"],
+                        pid,
                         session,
                         game["team"],
                         session,
@@ -245,7 +279,9 @@ def populate_games(current_session="2022-23") -> None:
     """
     )
 
-    upcoming_games = {e["id"] for e in bootstrap()["events"] if not e["is_previous"]}
+    upcoming_games = set[int](
+        e["id"] for e in bootstrap()["events"] if not e["chip_plays"]
+    )
     for ele in tqdm(
         bootstrap()["elements"],
         ascii=True,
@@ -274,7 +310,7 @@ def populate_games(current_session="2022-23") -> None:
                         None,
                         None,
                         upcoming_position(fullname),
-                        fullname,
+                        player_id_fuzzer(fullname),
                         current_session,
                         team,
                         current_session,

@@ -11,10 +11,12 @@ class Fixture:
     kickoff_time: datetime.datetime
     minutes: T.Optional[int]
     opponent: str
+    player: str
     points: T.Optional[int]
     session: T.Literal["2021-22", "2022-23"]
     team: str
     upcoming: bool
+    webname: str
     team_strength_attack_home: int
     team_strength_attack_away: int
     team_strength_defence_home: int
@@ -60,7 +62,6 @@ class Player:
 
     def __post_init__(self):
         backtrace = 3
-        lookahead = 3
 
         # Missing historical data for: {full_name}, setting xP=0,"
         if sum(not f.upcoming for f in self.fixutres) > backtrace:
@@ -68,18 +69,21 @@ class Player:
                 fixtures=self.fixutres,
                 backtrace=backtrace,
             )
-            self.xP *= self.upcoming_difficulty(lookahead)
         else:
             self.coefficients = tuple()
             self.xP = 0
 
     @property
     def tp(self) -> int:
-        return sum(f.points for f in self.fixutres if f.points and f.session == "2022-23")
+        return sum(
+            f.points for f in self.fixutres if f.points and f.session == "2022-23"
+        )
 
     @property
     def tm(self) -> int:
-        return sum(f.minutes for f in self.fixutres if f.minutes and f.session == "2022-23")
+        return sum(
+            f.minutes for f in self.fixutres if f.minutes and f.session == "2022-23"
+        )
 
     def upcoming_difficulty(self, n: int = 3) -> float:
         nfixutres = [f for f in self.fixutres if f.upcoming][:n]

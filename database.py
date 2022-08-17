@@ -13,13 +13,14 @@ class Game(pydantic.BaseModel):
     kickoff: datetime.datetime
     minutes: T.Optional[int]
     opponent: str
-    player: str
     player_id: int
+    player: str
     points: T.Optional[int]
     position: T.Literal["GKP", "DEF", "MID", "FWD"]
     session: T.Literal["2021-22", "2022-23"]
     team: str
     upcoming: bool
+    webname: str
     team_strength_attack_home: int
     team_strength_attack_away: int
     team_strength_defence_home: int
@@ -66,6 +67,7 @@ def games() -> list[Game]:
             session,
             upcoming,
             player_id,
+            (select webname from player where id = game.player_id)                 as webname,
             (select name from player where id = game.player_id)                    as player,
             (select name from team where opponent = team.id)                       as opponent,
             (select name from team where team = team.id)                           as team,
