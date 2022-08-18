@@ -115,7 +115,11 @@ def lineup(
         ascii=True,
     ) as bar:
         while not best_squad:
+
             bar.clear()
+            best_lxp *= 0.95
+            min_gxp *= 0.95
+
             for gp, gxp, g in gkp_combinations:
                 for fp, fxp, f in fwd_combinations:
                     bar.update(len(def_combinations) * len(mid_combinations))
@@ -159,8 +163,6 @@ def lineup(
                                 print(
                                     f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}, min_gxp={min_gxp:.2f}"
                                 )
-            best_lxp *= 0.95
-            min_gxp *= 0.95
 
     return best_squad
 

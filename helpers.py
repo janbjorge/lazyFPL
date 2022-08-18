@@ -94,7 +94,7 @@ def xP(
 
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
-    back = (backtrace + 1) ** 1
+    back = backtrace * 2
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace

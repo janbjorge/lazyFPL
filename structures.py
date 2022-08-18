@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import statistics
 import typing as T
 
 import helpers
@@ -64,7 +65,9 @@ class Player:
         backtrace = 3
 
         # Missing historical data for: {full_name}, setting xP=0,"
-        if sum(not f.upcoming for f in self.fixutres) > backtrace:
+        no_zero_median = statistics.median([f.points for f in self.fixutres if not f.upcoming] or [0]) > 0
+        enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
+        if no_zero_median and enough_observations:
             self.coefficients, self.xP = helpers.xP(
                 fixtures=self.fixutres,
                 backtrace=backtrace,
