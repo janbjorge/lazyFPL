@@ -29,14 +29,14 @@ class Fixture:
     opponent_strength_defence_home: int
     opponent_strength_defence_away: int
     opponent_strength_overall_home: int
-    opponent_trength_overall_away: int
+    opponent_strength_overall_away: int
 
     @property
     def ratio(self) -> float:
         if self.at_home:
             ad = self.team_strength_attack_home / self.opponent_strength_defence_away
             da = self.team_strength_defence_home / self.opponent_strength_attack_away
-            oa = self.team_strength_overall_home / self.opponent_trength_overall_away
+            oa = self.team_strength_overall_home / self.opponent_strength_overall_away
             return ad * da * oa
         else:
             ad = self.team_strength_attack_away / self.opponent_strength_defence_home
