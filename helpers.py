@@ -1,4 +1,5 @@
 import itertools
+import statistics
 import typing as T
 
 import numpy as np
@@ -89,7 +90,7 @@ def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None
 
 def xP(
     fixtures: list["structures.Fixture"],
-    backtrace: int = 3,
+    backtrace: int,
 ) -> tuple[tuple[float, ...], float]:
 
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
@@ -98,23 +99,52 @@ def xP(
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace
-    m = list[tuple[float, list[float]]]()
+    targets = list[float]()
+    coefficients = list[tuple[float, ...]]()
 
     while len(train) > backtrace:
         target = train.pop(-1)
-        m.append(
-            (target.adjusted_points, [t.adjusted_points for t in train[-backtrace:]])
+        assert target.points is not None
+        bt1, bt2 = train[-backtrace:]
+        assert bt1.points is not None
+        assert bt2.points is not None
+
+        targets.append(target.points)
+        coefficients.append(
+            (
+                (bt2.relative.attack / target.relative.attack) * bt2.points,
+                (bt2.relative.defence / target.relative.defence) * bt2.points,
+                (bt2.relative.overall / target.relative.overall) * bt2.points,
+                (bt1.relative.attack / target.relative.attack) * bt1.points,
+                (bt1.relative.defence / target.relative.defence) * bt1.points,
+                (bt1.relative.overall / target.relative.overall) * bt1.points,
+            )
         )
 
     coef, *_ = np.linalg.lstsq(
-        np.array([x for _, x in m]),
-        np.array([t for t, _ in m]),
+        np.array(coefficients),
+        np.array(targets),
         rcond=None,
     )
 
-    upcoming_difficulty = sum([f.ratio for f in fixtures if f.upcoming][:backtrace])
-    assert upcoming_difficulty > 0
+    i1, i2 = train[:2]
+    assert i1.points is not None
+    assert i2.points is not None
+    inf = np.array(
+        (
+            i2.relative.attack * i2.points,
+            i2.relative.defence * i2.points,
+            i2.relative.overall * i2.points,
+            i1.relative.attack * i1.points,
+            i1.relative.defence * i1.points,
+            i1.relative.overall * i1.points,
+        )
+    )
 
-    inference = m[0][1][-(backtrace - 1) :] + [m[0][0]]
-    inferred = np.array(inference).dot(coef.T) / upcoming_difficulty
+    # TODO: Use this rounds xP to get next weeks xP.
+    ud = [f for f in fixtures if f.upcoming][:backtrace]
+    uact = statistics.mean(u.relative.attack for u in ud)
+    udef = statistics.mean(u.relative.defence for u in ud)
+    uova = statistics.mean(u.relative.overall for u in ud)
+    inferred = statistics.mean(inf.dot(coef.T) * c for c in (uact, udef, uova))
     return tuple(round(c, 3) for c in coef), inferred

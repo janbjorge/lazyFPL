@@ -7,6 +7,13 @@ import helpers
 
 
 @dataclasses.dataclass(frozen=True)
+class Difficulty:
+    attack: float
+    defence: float
+    overall: float
+
+
+@dataclasses.dataclass(frozen=True)
 class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime
@@ -32,21 +39,32 @@ class Fixture:
     opponent_strength_overall_away: int
 
     @property
-    def ratio(self) -> float:
+    def relative(self) -> Difficulty:
         if self.at_home:
-            ad = self.team_strength_attack_home / self.opponent_strength_defence_away
-            da = self.team_strength_defence_home / self.opponent_strength_attack_away
-            oa = self.team_strength_overall_home / self.opponent_strength_overall_away
-            return ad * da * oa
+            attack = (
+                self.team_strength_attack_home / self.opponent_strength_defence_away
+            )
+            defence = (
+                self.team_strength_defence_home / self.opponent_strength_attack_away
+            )
+            overall = (
+                self.team_strength_overall_home / self.opponent_strength_overall_away
+            )
         else:
-            ad = self.team_strength_attack_away / self.opponent_strength_defence_home
-            da = self.team_strength_defence_away / self.opponent_strength_attack_home
-            oa = self.team_strength_overall_away / self.opponent_strength_overall_home
-            return ad * da * oa
-
-    @property
-    def adjusted_points(self) -> float:
-        return self.points / self.ratio if self.points else 0.0
+            attack = (
+                self.team_strength_attack_away / self.opponent_strength_defence_home
+            )
+            defence = (
+                self.team_strength_defence_away / self.opponent_strength_attack_home
+            )
+            overall = (
+                self.team_strength_overall_away / self.opponent_strength_overall_home
+            )
+        return Difficulty(
+            attack=attack,
+            defence=defence,
+            overall=overall,
+        )
 
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
@@ -62,12 +80,11 @@ class Player:
     xP: float = dataclasses.field(compare=False, init=False)
 
     def __post_init__(self):
-        backtrace = 3
+        backtrace = 2
 
         # Missing historical data for: {full_name}, setting xP=0,"
-        no_zero_median = statistics.median([f.points for f in self.fixutres if not f.upcoming] or [0]) > 0
         enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
-        if no_zero_median and enough_observations:
+        if enough_observations:
             self.coefficients, self.xP = helpers.xP(
                 fixtures=self.fixutres,
                 backtrace=backtrace,
@@ -90,4 +107,7 @@ class Player:
 
     def upcoming_difficulty(self, n: int = 3) -> float:
         nfixutres = [f for f in self.fixutres if f.upcoming][:n]
-        return sum(f.ratio for f in nfixutres)
+        return statistics.mean(
+            (f.relative.attack + f.relative.defence + f.relative.overall) / 3
+            for f in nfixutres
+        )
