@@ -1,5 +1,4 @@
 import itertools
-import statistics
 import typing as T
 
 import numpy as np
@@ -90,12 +89,14 @@ def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None
 
 def xP(
     fixtures: list["structures.Fixture"],
-    backtrace: int,
+    backtrace: int = 3,
+    lookahead: int | None = 3,
 ) -> tuple[tuple[float, ...], float]:
 
+    assert backtrace == 3
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
-    back = backtrace * 2
+    back = (2 + backtrace) ** 2
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace
@@ -105,19 +106,17 @@ def xP(
     while len(train) > backtrace:
         target = train.pop(-1)
         assert target.points is not None
-        bt1, bt2 = train[-backtrace:]
+        bt1, bt2, bt3 = train[-backtrace:]
         assert bt1.points is not None
         assert bt2.points is not None
+        assert bt3.points is not None
 
         targets.append(target.points)
         coefficients.append(
             (
-                (bt2.relative.attack / target.relative.attack) * bt2.points,
-                (bt2.relative.defence / target.relative.defence) * bt2.points,
-                (bt2.relative.overall / target.relative.overall) * bt2.points,
-                (bt1.relative.attack / target.relative.attack) * bt1.points,
-                (bt1.relative.defence / target.relative.defence) * bt1.points,
-                (bt1.relative.overall / target.relative.overall) * bt1.points,
+                bt3.points * bt3.relative.mul,
+                bt2.points * bt2.relative.mul,
+                bt1.points * bt1.relative.mul,
             )
         )
 
@@ -127,24 +126,16 @@ def xP(
         rcond=None,
     )
 
-    i1, i2 = train[:2]
-    assert i1.points is not None
-    assert i2.points is not None
-    inf = np.array(
-        (
-            i2.relative.attack * i2.points,
-            i2.relative.defence * i2.points,
-            i2.relative.overall * i2.points,
-            i1.relative.attack * i1.points,
-            i1.relative.defence * i1.points,
-            i1.relative.overall * i1.points,
-        )
-    )
+    expected = list[float]()
+    inference = [f for f in fixtures if not f.upcoming][-backtrace:]
+    inference = [f.points * f.relative.mul for f in inference]
+    upcoming = [f for f in fixtures if f.upcoming]
+    for _this, _next in zip(
+        upcoming[:lookahead],
+        upcoming[1:],
+    ):
+        expected.append(np.array(inference).dot(coef.T)/_next.relative.mul)
+        inference.pop(0)
+        inference.append(expected[-1] * _this.relative.mul)
 
-    # TODO: Use this rounds xP to get next weeks xP.
-    ud = [f for f in fixtures if f.upcoming][:backtrace]
-    uact = statistics.mean(u.relative.attack for u in ud)
-    udef = statistics.mean(u.relative.defence for u in ud)
-    uova = statistics.mean(u.relative.overall for u in ud)
-    inferred = statistics.mean(inf.dot(coef.T) * c for c in (uact, udef, uova))
-    return tuple(round(c, 3) for c in coef), inferred
+    return tuple(round(c, 3) for c in coef), sum(expected)

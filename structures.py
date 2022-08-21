@@ -1,6 +1,8 @@
 import dataclasses
 import datetime
-import statistics
+import functools
+import math
+import operator
 import typing as T
 
 import helpers
@@ -11,6 +13,14 @@ class Difficulty:
     attack: float
     defence: float
     overall: float
+
+    @property
+    def sum(self):
+        return self.attack + self.defence + self.overall
+
+    @property
+    def mul(self):
+        return math.sqrt(self.attack * self.defence * self.overall)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -80,7 +90,7 @@ class Player:
     xP: float = dataclasses.field(compare=False, init=False)
 
     def __post_init__(self):
-        backtrace = 2
+        backtrace = 3
 
         # Missing historical data for: {full_name}, setting xP=0,"
         enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
@@ -88,7 +98,10 @@ class Player:
             self.coefficients, self.xP = helpers.xP(
                 fixtures=self.fixutres,
                 backtrace=backtrace,
+                lookahead=3,
             )
+            if abs(sum(self.coefficients)) >= 1:
+                self.xP = float("-Inf")
         else:
             self.coefficients = tuple()
             self.xP = 0
@@ -107,7 +120,4 @@ class Player:
 
     def upcoming_difficulty(self, n: int = 3) -> float:
         nfixutres = [f for f in self.fixutres if f.upcoming][:n]
-        return statistics.mean(
-            (f.relative.attack + f.relative.defence + f.relative.overall) / 3
-            for f in nfixutres
-        )
+        return functools.reduce(operator.mul, (f.relative.mul for f in nfixutres))
