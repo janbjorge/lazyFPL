@@ -90,7 +90,7 @@ class Player:
     xP: float = dataclasses.field(compare=False, init=False)
 
     def __post_init__(self):
-        backtrace = 3
+        backtrace = helpers.backtrace()
 
         # Missing historical data for: {full_name}, setting xP=0,"
         enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
@@ -98,10 +98,8 @@ class Player:
             self.coefficients, self.xP = helpers.xP(
                 fixtures=self.fixutres,
                 backtrace=backtrace,
-                lookahead=3,
+                lookahead=helpers.lookahead(),
             )
-            if abs(sum(self.coefficients)) >= 1:
-                self.xP = float("-Inf")
         else:
             self.coefficients = tuple()
             self.xP = 0

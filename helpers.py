@@ -1,9 +1,21 @@
 import itertools
+import os
 import typing as T
 
 import numpy as np
 
 import structures
+
+def lookahead() -> int | None:
+    try:
+        return int(os.environ["FPL_LOOKAHEAD"])
+    except KeyError:
+        return None
+
+
+def backtrace() -> int:
+    return int(os.environ.get("FPL_BACKTRACE", "3"))
+
 
 
 def squad_price(lineup: T.Sequence["structures.Player"]) -> int:
@@ -89,14 +101,14 @@ def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None
 
 def xP(
     fixtures: list["structures.Fixture"],
-    backtrace: int = 3,
-    lookahead: int | None = 3,
+    backtrace: int = backtrace(),
+    lookahead: int | None = lookahead(),
 ) -> tuple[tuple[float, ...], float]:
 
-    assert backtrace == 3
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
     back = (2 + backtrace) ** 2
+    back = back * 2
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace
@@ -125,6 +137,11 @@ def xP(
         np.array(targets),
         rcond=None,
     )
+
+    _sum = coef.sum()
+    if abs(_sum) > 1e-6:
+        coef = coef / _sum
+    coef = np.clip(coef, -1, 1)
 
     expected = list[float]()
     inference = [f for f in fixtures if not f.upcoming][-backtrace:]
