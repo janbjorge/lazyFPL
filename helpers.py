@@ -6,6 +6,7 @@ import numpy as np
 
 import structures
 
+
 def lookahead() -> int | None:
     try:
         return int(os.environ["FPL_LOOKAHEAD"])
@@ -15,7 +16,6 @@ def lookahead() -> int | None:
 
 def backtrace() -> int:
     return int(os.environ.get("FPL_BACKTRACE", "3"))
-
 
 
 def squad_price(lineup: T.Sequence["structures.Player"]) -> int:
@@ -107,8 +107,7 @@ def xP(
 
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
-    back = (2 + backtrace) ** 2
-    back = back * 2
+    back = (backtrace + 2) ** 2
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace
@@ -117,8 +116,9 @@ def xP(
 
     while len(train) > backtrace:
         target = train.pop(-1)
-        assert target.points is not None
         bt1, bt2, bt3 = train[-backtrace:]
+
+        assert target.points is not None
         assert bt1.points is not None
         assert bt2.points is not None
         assert bt3.points is not None
@@ -126,9 +126,9 @@ def xP(
         targets.append(target.points)
         coefficients.append(
             (
-                bt3.points * bt3.relative.mul,
-                bt2.points * bt2.relative.mul,
-                bt1.points * bt1.relative.mul,
+                bt3.points * bt3.relative.combined,
+                bt2.points * bt2.relative.combined,
+                bt1.points * bt1.relative.combined,
             )
         )
 
@@ -145,14 +145,14 @@ def xP(
 
     expected = list[float]()
     inference = [f for f in fixtures if not f.upcoming][-backtrace:]
-    inference = [f.points * f.relative.mul for f in inference]
+    inference = [f.points * f.relative.combined for f in inference]
     upcoming = [f for f in fixtures if f.upcoming]
     for _this, _next in zip(
         upcoming[:lookahead],
         upcoming[1:],
     ):
-        expected.append(np.array(inference).dot(coef.T)/_next.relative.mul)
+        expected.append(np.array(inference).dot(coef.T) / _next.relative.combined)
         inference.pop(0)
-        inference.append(expected[-1] * _this.relative.mul)
+        inference.append(expected[-1] * _this.relative.combined)
 
     return tuple(round(c, 3) for c in coef), sum(expected)

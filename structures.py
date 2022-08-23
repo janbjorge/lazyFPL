@@ -1,8 +1,7 @@
 import dataclasses
 import datetime
-import functools
 import math
-import operator
+import statistics
 import typing as T
 
 import helpers
@@ -15,11 +14,7 @@ class Difficulty:
     overall: float
 
     @property
-    def sum(self):
-        return self.attack + self.defence + self.overall
-
-    @property
-    def mul(self):
+    def combined(self):
         return math.sqrt(self.attack * self.defence * self.overall)
 
 
@@ -91,18 +86,21 @@ class Player:
 
     def __post_init__(self):
         backtrace = helpers.backtrace()
+        lookahead = helpers.lookahead()
 
-        # Missing historical data for: {full_name}, setting xP=0,"
         enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
         if enough_observations:
             self.coefficients, self.xP = helpers.xP(
                 fixtures=self.fixutres,
                 backtrace=backtrace,
-                lookahead=helpers.lookahead(),
+                lookahead=lookahead,
             )
+        elif points := [f.points for f in self.fixutres if f.points is not None]:
+            self.coefficients = (round(1 / backtrace, 3),) * backtrace
+            self.xP = statistics.mean(points) * (lookahead or 38 - len(points))
         else:
-            self.coefficients = tuple()
             self.xP = 0
+            self.coefficients = tuple()
 
     @property
     def tp(self) -> int:
@@ -116,6 +114,6 @@ class Player:
             f.minutes for f in self.fixutres if f.minutes and f.session == "2022-23"
         )
 
-    def upcoming_difficulty(self, n: int = 3) -> float:
-        nfixutres = [f for f in self.fixutres if f.upcoming][:n]
-        return functools.reduce(operator.mul, (f.relative.mul for f in nfixutres))
+    def upcoming_difficulty(self) -> float:
+        upcoming = [f for f in self.fixutres if f.upcoming][: helpers.lookahead()]
+        return sum(f.relative.combined for f in upcoming)
