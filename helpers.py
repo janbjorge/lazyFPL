@@ -87,7 +87,7 @@ def lprint(
         print(f" xP    Price  Team            Player")
         for player in players:
             print(
-                f" {player.xP:<5.2f} {player.price/10:<6}"
+                f" {player.xP:<5.1f} {player.price/10:<6}"
                 f" {player.team:<{15}} {player.name}({player.webname}) "
                 f" {'X' if player.name in best else ''}"
             )
