@@ -17,6 +17,7 @@ def transfer(
     budget: int,
     done_transfers: int,
     max_transfers: int,
+    remove: set[structures.Player],
 ) -> T.List[structures.Player]:
 
     if (
@@ -25,6 +26,8 @@ def transfer(
         and constraints.team_constraint(current, n=3)
         and helpers.best_lineup_xP(current) > best_lxp
     ):
+        if remove and any(p in remove for p in current):
+            return []
         return current
     elif done_transfers >= max_transfers:
         return []
@@ -62,6 +65,7 @@ def transfer(
                     budget=budget,
                     done_transfers=done_transfers + 1,
                     max_transfers=max_transfers,
+                    remove=remove,
                 )
                 or best
             )
@@ -77,6 +81,7 @@ def main() -> None:
     )
     parser.add_argument("--max_transfers", "-m", type=int, required=True)
     parser.add_argument("--topn", "-t", type=int, required=True)
+    parser.add_argument("--remove", nargs="+", default=[])
 
     args = parser.parse_args()
 
@@ -96,7 +101,9 @@ def main() -> None:
         budget=helpers.squad_price(team),
         done_transfers=0,
         max_transfers=args.max_transfers,
+        remove=set(p for p in fetch.players() if p.name in args.remove or p.webname in args.remove),
     )
+
     transfers_in = sorted((p for p in best if p not in team), key=lambda x: x.position)
     transfers_out = sorted((p for p in team if p not in best), key=lambda x: x.position)
 
@@ -105,10 +112,11 @@ def main() -> None:
 
     max_len_out_name = max(len(p.webname) for p in transfers_out)
     max_len_out_team = max(len(p.team) for p in transfers_out)
+
     print("\n>>>> Suggest transfers")
     for o, i in zip(transfers_out, transfers_in):
         print(
-            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:.2f}"
+            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.2f}"
             "  -->>  "
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
