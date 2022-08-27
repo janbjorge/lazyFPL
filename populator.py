@@ -123,6 +123,7 @@ def structure() -> None:
             name TEXT NOT NULL,
             price INTEGER NOT NULL,
             team_id INTEGER NOT NULL,
+            news TEXT NOT NULL,
             FOREIGN KEY(team_id) REFERENCES team(id),
             UNIQUE(webname, name, team_id)
         );
@@ -188,9 +189,10 @@ def populate_players(session: T.Literal["2022-23"] = "2022-23") -> None:
             webname,
             name,
             price,
+            news,
             team_id
         ) VALUES (
-            ?, ?, ?,
+            ?, ?, ?, ?,
             (SELECT id FROM team WHERE session = ? AND web_team_id = ?)
         );
     """
@@ -207,6 +209,7 @@ def populate_players(session: T.Literal["2022-23"] = "2022-23") -> None:
                 ele["web_name"],
                 f'{ele["first_name"]} {ele["second_name"]}',
                 ele["now_cost"],
+                ele["news"],
                 session,
                 ele["team"],
             ),
@@ -290,8 +293,6 @@ def populate_games(current_session="2022-23") -> None:
         unit_scale=True,
     ):
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
-        if ele["news"]:
-            continue
         team = upcoming_team_id_to_name(ele["team"])
         for upcoming in summary(ele["id"])["fixtures"]:
             # A past game, data allready logged.

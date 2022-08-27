@@ -12,6 +12,7 @@ class Game(pydantic.BaseModel):
     is_home: bool
     kickoff: datetime.datetime
     minutes: T.Optional[int]
+    news: str
     opponent: str
     player_id: int
     player: str
@@ -67,8 +68,9 @@ def games() -> list[Game]:
             session,
             upcoming,
             player_id,
-            (select webname from player where id = game.player_id)                 as webname,
             (select name from player where id = game.player_id)                    as player,
+            (select news from player where id = game.player_id)                    as news,
+            (select webname from player where id = game.player_id)                 as webname,
             (select name from team where opponent = team.id)                       as opponent,
             (select name from team where team = team.id)                           as team,
             (select strength_attack_home from team where team.id = game.team)      as team_strength_attack_home,

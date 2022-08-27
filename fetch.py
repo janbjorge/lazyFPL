@@ -69,13 +69,14 @@ def players() -> list[structures.Player]:
             structures.Player(
                 fixutres=fixtures,
                 name=name,
-                news="",
+                news=games[-1].news,
                 position=games[-1].position,
                 price=database.price(games[-1].player_id),
                 team=team,
                 webname=database.webname(games[-1].player_id),
             )
         )
+
     return pool
 
 
