@@ -1,3 +1,4 @@
+import functools
 import itertools
 import os
 import typing as T
@@ -10,12 +11,14 @@ import helpers
 import structures
 
 
+@functools.cache
 def bootstrap() -> dict:
     return requests.get(
         "https://fantasy.premierleague.com/api/bootstrap-static/"
     ).json()
 
 
+@functools.cache
 def player_name(pid: int) -> str:
     for element in bootstrap()["elements"]:
         if element["id"] == pid:
@@ -23,6 +26,7 @@ def player_name(pid: int) -> str:
     raise ValueError(f"No player named: {pid}")
 
 
+@functools.cache
 def players() -> list[structures.Player]:
 
     pool = list[structures.Player]()
@@ -80,6 +84,7 @@ def players() -> list[structures.Player]:
     return pool
 
 
+@functools.cache
 def my_team(
     team_id: str = os.environ.get("FPL_TEAMID", ""),
     pl_profile: str = os.environ.get("FPL_COOKIE", ""),

@@ -18,6 +18,7 @@ def transfer(
     done_transfers: int,
     max_transfers: int,
     remove: set[structures.Player],
+    add: set[structures.Player],
 ) -> T.List[structures.Player]:
 
     if (
@@ -26,8 +27,12 @@ def transfer(
         and constraints.team_constraint(current, n=3)
         and helpers.best_lineup_xP(current) > best_lxp
     ):
-        if remove and any(p in remove for p in current):
+        if remove and any(r in current for r in remove):
             return []
+        if add and not all(a in current for a in add):
+            return []
+        print("-" * 100)
+        helpers.lprint(current)
         return current
     elif done_transfers >= max_transfers:
         return []
@@ -66,6 +71,7 @@ def transfer(
                     done_transfers=done_transfers + 1,
                     max_transfers=max_transfers,
                     remove=remove,
+                    add=add,
                 )
                 or best
             )
@@ -82,6 +88,7 @@ def main() -> None:
     parser.add_argument("--max_transfers", "-m", type=int, required=True)
     parser.add_argument("--topn", "-t", type=int, required=True)
     parser.add_argument("--remove", nargs="+", default=[])
+    parser.add_argument("--add", nargs="+", default=[])
 
     args = parser.parse_args()
 
@@ -93,15 +100,23 @@ def main() -> None:
     team = list(fetch.my_team())
     helpers.lprint(team, best=[p.name for p in helpers.best_lineup(team)])
 
+    remove = set(
+        p for p in fetch.players() if p.name in args.remove or p.webname in args.remove
+    )
+    assert len(remove) == len(args.remove), (remove, args.remove)
+    add = set(p for p in fetch.players() if p.name in args.add or p.webname in args.add)
+    assert len(add) == len(args.add), (add, args.add)
+
     best = transfer(
         current=team,
         best=team,
         best_lxp=helpers.best_lineup_xP(team),
-        pool=pool,
+        pool=list(set(pool + list(add))),
         budget=helpers.squad_price(team),
         done_transfers=0,
         max_transfers=args.max_transfers,
-        remove=set(p for p in fetch.players() if p.name in args.remove or p.webname in args.remove),
+        remove=remove,
+        add=add,
     )
 
     transfers_in = sorted((p for p in best if p not in team), key=lambda x: x.position)

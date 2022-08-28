@@ -21,6 +21,7 @@ def lineup(
     min_xp_mid_combination: float = 20.0,
     min_xp_fwd_combination: float = 0.0,
     min_gxp_lxp_ratio: float = 1.1,
+    include: T.Sequence[structures.Player] = tuple(),
 ) -> T.Sequence[structures.Player]:
 
     assert min_gxp_lxp_ratio >= 1
@@ -41,6 +42,10 @@ def lineup(
             p.price == min(p.price for p in pool if p.position == "GKP") for p in c[-1]
         )
     ]
+    if include_gkps := [p for p in include if p.position == "GKP"]:
+        gkp_combinations = [
+            c for c in gkp_combinations if any(p in include_gkps for p in c[-1])
+        ]
 
     def_combinations = sorted(
         (
@@ -52,6 +57,10 @@ def lineup(
         reverse=True,
     )
     def_combinations = [c for c in def_combinations if c[1] > min_xp_def_combination]
+    if include_defs := [p for p in include if p.position == "DEF"]:
+        def_combinations = [
+            c for c in def_combinations if any(p in include_defs for p in c[-1])
+        ]
 
     mid_combinations = sorted(
         (
@@ -63,6 +72,10 @@ def lineup(
         reverse=True,
     )
     mid_combinations = [c for c in mid_combinations if c[1] > min_xp_mid_combination]
+    if include_mids := [p for p in include if p.position == "MID"]:
+        mid_combinations = [
+            c for c in mid_combinations if any(p in include_mids for p in c[-1])
+        ]
 
     fwd_combinations = sorted(
         (
@@ -73,6 +86,10 @@ def lineup(
         reverse=True,
     )
     fwd_combinations = [c for c in fwd_combinations if c[1] > min_xp_fwd_combination]
+    if include_fwds := [p for p in include if p.position == "FWD"]:
+        fwd_combinations = [
+            c for c in fwd_combinations if any(p in include_fwds for p in c[-1])
+        ]
 
     total = (
         len(gkp_combinations)
@@ -179,6 +196,7 @@ def position_price_candidates(topn: int = 5) -> T.Sequence[structures.Player]:
         key=lambda x: (x.position, x.price),
     ):
         candidates = sorted(list(players), key=lambda x: x.xP, reverse=True)
+        candidates = [c for c in candidates if c.tm > 90]
         pool.extend(candidates[:topn])
 
     # Just in case.
@@ -213,7 +231,14 @@ def main():
     remove = set(r.lower() for r in args.remove)
     pool = [p for p in pool if p.webname.lower() not in remove]
 
-    include = set(i.lower() for i in args.include)
+    include = tuple(
+        set(
+            p
+            for p in fetch.players()
+            if p.webname in args.include or p.name in args.include
+        )
+    )
+    assert len(include) == len(args.include), (include, args.include)
     pool.extend([p for p in pool if p.name in include])
 
     # Just in case
@@ -229,6 +254,7 @@ def main():
         min_xp_fwd_combination=args.min_xp_fwd_combination,
         min_xp_mid_combination=args.min_xp_mid_combination,
         min_gxp_lxp_ratio=args.min_gxp_lxp_ratio,
+        include=include,
     )
 
     helpers.lprint(squad, best=[p.name for p in helpers.best_lineup(squad)])

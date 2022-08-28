@@ -17,6 +17,7 @@ def bootstrap() -> dict:
     ).json()
 
 
+@functools.cache
 def summary(id: int) -> dict:
     assert isinstance(id, int)
     return requests.get(
