@@ -9,6 +9,31 @@ import helpers
 import structures
 
 
+def print_transfer(
+    old: T.Sequence[structures.Player],
+    new: T.Sequence[structures.Player],
+) -> None:
+    transfers_in = sorted((p for p in new if p not in old), key=lambda x: x.position)
+    transfers_out = sorted((p for p in old if p not in new), key=lambda x: x.position)
+
+    max_len_in_name = max(len(p.webname) for p in transfers_in)
+    max_len_in_team = max(len(p.team) for p in transfers_in)
+
+    max_len_out_name = max(len(p.webname) for p in transfers_out)
+    max_len_out_team = max(len(p.team) for p in transfers_out)
+
+    print("-" * 100, flush=True)
+    for o, i in zip(transfers_out, transfers_in):
+        print(
+            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.2f}"
+            "  -->>  "
+            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
+        )
+    print(
+        f"lxp gain: {(helpers.best_lineup_xP(new) - helpers.best_lineup_xP(old)):.2f}"
+    )
+
+
 def transfer(
     current: T.List[structures.Player],
     best: T.List[structures.Player],
@@ -19,6 +44,7 @@ def transfer(
     max_transfers: int,
     remove: set[structures.Player],
     add: set[structures.Player],
+    base: T.Sequence[structures.Player],
 ) -> T.List[structures.Player]:
 
     if (
@@ -31,8 +57,7 @@ def transfer(
             return []
         if add and not all(a in current for a in add):
             return []
-        print("-" * 100)
-        helpers.lprint(current)
+        print_transfer(base, current)
         return current
     elif done_transfers >= max_transfers:
         return []
@@ -72,6 +97,7 @@ def transfer(
                     max_transfers=max_transfers,
                     remove=remove,
                     add=add,
+                    base=base,
                 )
                 or best
             )
@@ -82,21 +108,27 @@ def transfer(
 def main() -> None:
 
     parser = argparse.ArgumentParser(
-        prog="Transfer optimizer",
+        prog="Transfer picker.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--max_transfers", "-m", type=int, required=True)
-    parser.add_argument("--topn", "-t", type=int, required=True)
-    parser.add_argument("--remove", nargs="+", default=[])
     parser.add_argument("--add", nargs="+", default=[])
+    parser.add_argument("--max-transfers", type=int, required=True)
+    parser.add_argument("--min-tm", default=0.0, type=float)
+    parser.add_argument("--min-xp", default=0.0, type=float)
+    parser.add_argument("--remove", nargs="+", default=[])
+    parser.add_argument("--skip-news", type=int, default=None)
+    parser.add_argument("--topn", type=int, default=0)
 
     args = parser.parse_args()
 
-    pool = sorted(fetch.players(), key=lambda x: x.xP, reverse=True)[: args.topn]
+    pool = sorted(fetch.players(), key=lambda x: x.xP)
+    pool = [p for p in pool if not p.news and not args.skip_news]
+    pool = [p for p in pool if p.xP >= args.min_xp and p.tm >= args.min_tm]
+    pool = pool[-args.topn :]
     print(">>> Pool")
     helpers.lprint(pool)
 
-    print("\n>>>> Current team")
+    print(">>>> Current team")
     team = list(fetch.my_team())
     helpers.lprint(team, best=[p.name for p in helpers.best_lineup(team)])
 
@@ -104,10 +136,11 @@ def main() -> None:
         p for p in fetch.players() if p.name in args.remove or p.webname in args.remove
     )
     assert len(remove) == len(args.remove), (remove, args.remove)
+
     add = set(p for p in fetch.players() if p.name in args.add or p.webname in args.add)
     assert len(add) == len(args.add), (add, args.add)
 
-    best = transfer(
+    transfer(
         current=team,
         best=team,
         best_lxp=helpers.best_lineup_xP(team),
@@ -117,26 +150,7 @@ def main() -> None:
         max_transfers=args.max_transfers,
         remove=remove,
         add=add,
-    )
-
-    transfers_in = sorted((p for p in best if p not in team), key=lambda x: x.position)
-    transfers_out = sorted((p for p in team if p not in best), key=lambda x: x.position)
-
-    max_len_in_name = max(len(p.webname) for p in transfers_in)
-    max_len_in_team = max(len(p.team) for p in transfers_in)
-
-    max_len_out_name = max(len(p.webname) for p in transfers_out)
-    max_len_out_team = max(len(p.team) for p in transfers_out)
-
-    print("\n>>>> Suggest transfers")
-    for o, i in zip(transfers_out, transfers_in):
-        print(
-            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.2f}"
-            "  -->>  "
-            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
-        )
-    print(
-        f"lxp gain: {(helpers.best_lineup_xP(best) - helpers.best_lineup_xP(team)):.2f}"
+        base=team.copy(),
     )
 
 
