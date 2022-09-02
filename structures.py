@@ -114,6 +114,17 @@ class Player:
             f.minutes for f in self.fixutres if f.minutes and f.session == "2022-23"
         )
 
+    @property
+    def mtm(self) -> float:
+        try:
+            return statistics.mean(
+                f.minutes or 0
+                for f in self.fixutres
+                if f.session == "2022-23" and not f.upcoming
+            )
+        except statistics.StatisticsError:
+            return 0.0
+
     def upcoming_difficulty(self) -> float:
         upcoming = [f for f in self.fixutres if f.upcoming][: helpers.lookahead()]
         return sum(f.relative.combined for f in upcoming)

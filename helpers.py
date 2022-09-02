@@ -1,3 +1,4 @@
+import collections
 import itertools
 import os
 import typing as T
@@ -50,6 +51,22 @@ def best_lineup(
 
 def best_lineup_xP(lineup: T.Sequence["structures.Player"]) -> float:
     return squad_xP(best_lineup(lineup))
+
+
+def valid_squad(
+    squad: T.Sequence["structures.Player"],
+    gkps: int = 2,
+    defs: int = 5,
+    mids: int = 5,
+    fwds: int = 3,
+) -> bool:
+    cnt = collections.Counter(p.position for p in squad)
+    return (
+        cnt["GKP"] == gkps
+        and cnt["DEF"] == defs
+        and cnt["MID"] == mids
+        and cnt["FWD"] == fwds
+    )
 
 
 def lprint(
