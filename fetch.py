@@ -85,19 +85,22 @@ def players() -> list[structures.Player]:
 
 
 @functools.cache
+def picks(team_id: str) -> T.Sequence[structures.Player]:
+    gmw = 1
+    prev = None
+    while req := requests.get(
+        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{gmw}/picks/"
+    ):
+        gmw += 1
+        prev = req
+    return prev.json()["picks"]
+
+
+@functools.cache
 def my_team(
     team_id: str = os.environ.get("FPL_TEAMID", ""),
-    pl_profile: str = os.environ.get("FPL_COOKIE", ""),
 ) -> T.Sequence[structures.Player]:
-    if not team_id:
-        raise ValueError("Missing `FPL_TEAMID`.")
-    if not pl_profile:
-        raise ValueError("Missing `FPL_COOKIE`.")
-    team = requests.get(
-        f"https://fantasy.premierleague.com/api/my-team/{team_id}/",
-        cookies={"pl_profile": pl_profile},
-    ).json()
-    names = set(player_name(pick["element"]) for pick in team["picks"])
+    names = set(player_name(pick["element"]) for pick in picks(team_id))
     return [p for p in players() if p.name in names]
 
 
