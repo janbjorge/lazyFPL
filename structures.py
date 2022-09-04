@@ -1,6 +1,5 @@
 import dataclasses
 import datetime
-import math
 import statistics
 import typing as T
 
@@ -15,7 +14,7 @@ class Difficulty:
 
     @property
     def combined(self):
-        return math.sqrt(self.attack * self.defence * self.overall)
+        return (self.attack**2 + self.defence**2 + self.overall**2) ** (1 / 2)
 
 
 @dataclasses.dataclass(frozen=True)

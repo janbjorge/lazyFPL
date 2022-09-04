@@ -41,8 +41,6 @@ def transfer(
     pool: T.List[structures.Player],
     max_transfers: int,
     bar: tqdm,
-    add: T.List[structures.Player],
-    remove: T.List[structures.Player],
 ):
 
     max_budget = helpers.squad_price(current)
@@ -144,8 +142,6 @@ def main() -> None:
                     pool=list(set(pool + list(add))),
                     max_transfers=args.max_transfers,
                     bar=bar,
-                    add=add,
-                    remove=remove,
                 )
                 if (
                     (not add or all(a in n for a in add))
