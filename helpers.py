@@ -70,7 +70,8 @@ def valid_squad(
 
 
 def lprint(
-    lineup: T.Sequence["structures.Player"], best: T.Sequence[str] | None = None
+    lineup: T.Sequence["structures.Player"],
+    best: T.Sequence[str] | None = None,
 ) -> None:
 
     if not best:
@@ -106,13 +107,17 @@ def lprint(
             print(
                 f" {player.xP:<5.1f} {player.price/10:<6}"
                 f" {player.team:<{15}} {player.name}({player.webname}) "
-                f" {'X' if player.name in best else ''}"
+                f" {'X' if player.name in best else ''}",
             )
 
 
-def header(pool: T.Sequence["structures.Player"], prefix="", postfix="") -> None:
+def header(
+    pool: T.Sequence["structures.Player"],
+    prefix: str = "",
+    postfix: str = "",
+) -> None:
     print(
-        f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}"
+        f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}",
     )
 
 

@@ -122,11 +122,10 @@ def main() -> None:
     assert len(add) == len(args.add), (add, args.add)
 
     remove = set(
-        p for p in fetch.players() if p.name in args.remove or p.webname in args.remove
+        p for p in fetch.players() if p.name in args.remove or p.team in args.remove
     )
-    assert len(remove) == len(args.remove), (remove, args.remove)
 
-    lxp = helpers.best_lineup_xP(team)
+    lxp = (helpers.best_lineup_xP(team) + helpers.squad_xP(team)) / 2.0
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -148,9 +147,9 @@ def main() -> None:
                     and (not remove or not any(r in n for r in remove))
                 )
             ),
-            key=helpers.best_lineup_xP,
+            key=lambda x: (helpers.best_lineup_xP(x) + helpers.squad_xP(x)) / 2,
         )[-(args.top or 50) :]:
-            if helpers.best_lineup_xP(new) > lxp:
+            if (helpers.best_lineup_xP(new) + helpers.squad_xP(new)) / 2.0 > lxp:
                 display(team, new, bar)
 
 
