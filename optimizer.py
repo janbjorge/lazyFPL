@@ -16,13 +16,13 @@ import structures
 
 def lineup(
     pool: T.Sequence[structures.Player],
+    bench_strength: float = 1.05,
     budget_lower: int = 900,
     budget_upper: int = 1_000,
-    gxp_lxp_ratio: float = 1.05,
     include: T.Sequence[structures.Player] = tuple(),
 ) -> T.Sequence[structures.Player]:
 
-    assert gxp_lxp_ratio >= 1
+    assert bench_strength >= 1
 
     gkp_combinations = sorted(
         (
@@ -95,7 +95,7 @@ def lineup(
         return []
 
     best_squad = tuple[structures.Player, ...]()
-    max_gxp = sum(
+    best_squad_xp = sum(
         (
             max(xp for _, xp, _ in gkp_combinations),
             max(xp for _, xp, _ in def_combinations),
@@ -103,7 +103,7 @@ def lineup(
             max(xp for _, xp, _ in fwd_combinations),
         )
     )
-    best_lxp = max_gxp / gxp_lxp_ratio
+    best_linep_xp = best_squad_xp / bench_strength
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
@@ -120,22 +120,24 @@ def lineup(
     ) as bar:
         while (
             not best_squad
-            and not math.isclose(best_lxp, 0.0, abs_tol=0.1)
-            and not math.isclose(max_gxp, 0.0, abs_tol=0.1)
+            and not math.isclose(best_linep_xp, 0.0, abs_tol=0.1)
+            and not math.isclose(best_squad_xp, 0.0, abs_tol=0.1)
         ):
 
-            best_lxp *= 0.95
-            max_gxp *= 0.95
+            best_linep_xp *= 0.9
+            best_squad_xp *= 0.9
 
             bar.clear()
             bar.reset()
-            bar.write(f"best_lxp={best_lxp:.2f}, min_gxp={max_gxp:.2f}")
+            bar.write(
+                f"best_linep_xp={best_linep_xp:.2f}, best_squad_xp={best_squad_xp:.2f}"
+            )
 
             for gp, gxp, g in gkp_combinations:
                 for fp, fxp, f in fwd_combinations:
                     bar.update(len(def_combinations) * len(mid_combinations))
 
-                    if gxp + fxp + max_def_xp + max_mid_xp < max_gxp:
+                    if gxp + fxp + max_def_xp + max_mid_xp < best_squad_xp:
                         continue
 
                     if max(C.Counter(p.team for p in g + f).values()) > 3:
@@ -143,7 +145,7 @@ def lineup(
 
                     for dp, dxp, d in def_combinations:
 
-                        if gxp + fxp + dxp + max_mid_xp < max_gxp:
+                        if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
                             break
 
                         if gp + fp + dp + max_mid_price < budget_lower:
@@ -164,26 +166,25 @@ def lineup(
 
                         for mp, mxp, m in mid_combinations:
 
-                            if gxp + fxp + dxp + mxp < max_gxp:
+                            if gxp + fxp + dxp + mxp < best_squad_xp:
                                 break
 
                             if (
                                 budget_lower <= mp + dp + fp + gp <= budget_upper
-                                and gxp + fxp + dxp + mxp >= best_lxp
+                                and gxp + fxp + dxp + mxp >= best_linep_xp
                                 and constraints.team_constraint(
                                     squad := g + f + d + m, n=3
                                 )
                                 and (bl := helpers.best_lineup(squad))
-                                and (blxp := helpers.squad_xP(bl)) > best_lxp
-                                and (blxp + gxp + fxp + dxp + mxp) / 2.0 > best_lxp
+                                and (blxp := helpers.squad_xP(bl)) > best_linep_xp
+                                and (blxp + gxp + fxp + dxp + mxp) / 2.0 > best_linep_xp
                             ):
-                                best_lxp = (blxp + gxp + fxp + dxp + mxp) / 2.0
+                                best_linep_xp = (blxp + gxp + fxp + dxp + mxp) / 2.0
                                 best_squad = squad
-                                max_gxp = best_lxp * gxp_lxp_ratio
-                                assert max_gxp >= best_lxp
-                                helpers.lprint(best_squad, [p.name for p in bl])
-                                print(
-                                    f"-->> lxp={best_lxp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}, min_gxp={max_gxp:.2f}"
+                                best_squad_xp = best_linep_xp * bench_strength
+                                assert best_squad_xp >= best_linep_xp
+                                bar.write(
+                                    f"-->> lxp={best_linep_xp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}"
                                 )
 
     return best_squad
@@ -213,9 +214,9 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    parser.add_argument("--bench-strength", type=float, default=1.1)
     parser.add_argument("--budget-lower", type=int, default=900)
     parser.add_argument("--budget-upper", type=int, default=1_000)
-    parser.add_argument("--gxp-lxp-ratio", type=float, default=1.1)
     parser.add_argument("--include", nargs="+", default=[])
     parser.add_argument("--min-mtm", type=float, default=0.0)
     parser.add_argument("--min-xp", type=float, default=0.0)
@@ -255,9 +256,9 @@ def main():
     helpers.lprint(pool)
     squad = lineup(
         pool=pool,
+        bench_strength=args.bench_strength,
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
-        gxp_lxp_ratio=args.gxp_lxp_ratio,
         include=include,
     )
 
