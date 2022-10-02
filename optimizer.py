@@ -126,6 +126,9 @@ def lineup(
 
             best_lxp *= 0.95
             max_gxp *= 0.95
+
+            bar.clear()
+            bar.reset()
             bar.write(f"best_lxp={best_lxp:.2f}, min_gxp={max_gxp:.2f}")
 
             for gp, gxp, g in gkp_combinations:
