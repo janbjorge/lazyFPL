@@ -1,6 +1,6 @@
-import typing as T
 import argparse
 import itertools
+import typing as T
 
 from tqdm import tqdm
 
@@ -8,6 +8,10 @@ import constraints
 import fetch
 import helpers
 import structures
+
+
+def squad_score(squad: T.Sequence[structures.Player]) -> float:
+    return (helpers.squad_xP(squad) + helpers.best_lineup_xP(squad)) / 2.0
 
 
 def display(
@@ -32,7 +36,7 @@ def display(
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
     tqdm.write(
-        f"lxp gain: {(helpers.best_lineup_xP(new) - helpers.best_lineup_xP(old)):.2f}"
+        f"lxp gain: {(squad_score(new) - squad_score(old)):.2f}"
     )
 
 
@@ -72,6 +76,7 @@ def transfer(
             total += len(transfer_in[n])
 
     bar.total = total
+    current_xp = helpers.squad_xP(current)
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
@@ -82,6 +87,10 @@ def transfer(
                 if cost > max_budget:
                     break
                 squad = base + t_in
+
+                if helpers.squad_xP(squad) < current_xp:
+                    continue
+
                 if (
                     helpers.valid_squad(squad)
                     and len(set(squad)) == 15
@@ -102,14 +111,12 @@ def main() -> None:
     parser.add_argument("--min-mtm", default=0.0, type=float)
     parser.add_argument("--min-xp", default=0.0, type=float)
     parser.add_argument("--remove", nargs="+", default=[])
-    parser.add_argument("--skip-news", type=int, default=None)
     parser.add_argument("--top", type=int, default=0)
 
     args = parser.parse_args()
 
-    pool = sorted(fetch.players(), key=lambda x: x.xP)
-    pool = [p for p in pool if not p.news and not args.skip_news]
-    pool = [p for p in pool if p.xP >= args.min_xp and p.mtm >= args.min_mtm]
+    pool = [p for p in fetch.players() if p.xP >= args.min_xp and p.mtm >= args.min_mtm and not p.news]
+    pool = sorted(pool, key=lambda p: p.xP)
     pool = pool[-args.top :]
     print(">>> Pool")
     helpers.lprint(pool)
@@ -125,7 +132,7 @@ def main() -> None:
         p for p in fetch.players() if p.name in args.remove or p.team in args.remove
     )
 
-    lxp = (helpers.best_lineup_xP(team) + helpers.squad_xP(team)) / 2.0
+    lxp = squad_score(team)
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -145,12 +152,12 @@ def main() -> None:
                 if (
                     (not add or all(a in n for a in add))
                     and (not remove or not any(r in n for r in remove))
+                    and squad_score(n) > lxp
                 )
             ),
-            key=lambda x: (helpers.best_lineup_xP(x) + helpers.squad_xP(x)) / 2,
-        )[-(args.top or 50) :]:
-            if (helpers.best_lineup_xP(new) + helpers.squad_xP(new)) / 2.0 > lxp:
-                display(team, new, bar)
+            key=lambda x: squad_score(x),
+        )[-(args.top or 25):]:
+            display(team, new, bar)
 
 
 if __name__ == "__main__":

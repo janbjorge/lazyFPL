@@ -47,7 +47,7 @@ def player_id_fuzzer(name: str) -> int:
     for dname, pid in db_name_pid().items():
         dname = dname.lower()
         if dname == name:
-            pid
+            return pid
         if all(n in dname for n in name.split()):
             return pid
         if all(n in name for n in dname.split()):
