@@ -1,7 +1,8 @@
 import argparse
 import collections as C
+import heapq
 import itertools
-import math
+import statistics
 import typing as T
 
 from tqdm import (
@@ -16,13 +17,11 @@ import structures
 
 def lineup(
     pool: T.Sequence[structures.Player],
-    bench_strength: float = 1.05,
     budget_lower: int = 900,
     budget_upper: int = 1_000,
     include: T.Sequence[structures.Player] = tuple(),
-) -> T.Sequence[structures.Player]:
-
-    assert bench_strength >= 1
+    keep: int = 1_000,
+) -> T.Sequence[T.Sequence[structures.Player]]:
 
     gkp_combinations = sorted(
         (
@@ -30,11 +29,10 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "GKP"), 2)
         ),
         key=lambda x: x[1],
-        reverse=True,
     )
     if include_gkps := [p for p in include if p.position == "GKP"]:
         gkp_combinations = [
-            c for c in gkp_combinations if any(p in include_gkps for p in c[-1])
+            c for c in gkp_combinations if all(i in c[-1] for i in include_gkps)
         ]
 
     def_combinations = sorted(
@@ -44,11 +42,10 @@ def lineup(
             if constraints.team_constraint(c, 3)
         ),
         key=lambda x: x[1],
-        reverse=True,
     )
     if include_defs := [p for p in include if p.position == "DEF"]:
         def_combinations = [
-            c for c in def_combinations if any(p in include_defs for p in c[-1])
+            c for c in def_combinations if all(i in c[-1] for i in include_defs)
         ]
 
     mid_combinations = sorted(
@@ -58,11 +55,10 @@ def lineup(
             if constraints.team_constraint(c, 3)
         ),
         key=lambda x: x[1],
-        reverse=True,
     )
     if include_mids := [p for p in include if p.position == "MID"]:
         mid_combinations = [
-            c for c in mid_combinations if any(p in include_mids for p in c[-1])
+            c for c in mid_combinations if all(i in c[-1] for i in include_mids)
         ]
 
     fwd_combinations = sorted(
@@ -71,12 +67,13 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "FWD"), 3)
         ),
         key=lambda x: x[1],
-        reverse=True,
     )
     if include_fwds := [p for p in include if p.position == "FWD"]:
         fwd_combinations = [
-            c for c in fwd_combinations if any(p in include_fwds for p in c[-1])
+            c for c in fwd_combinations if all(i in c[-1] for i in include_fwds)
         ]
+
+    # All combinations are sorted from low -> higest price.
 
     total = (
         len(gkp_combinations)
@@ -94,21 +91,14 @@ def lineup(
     if not total:
         return []
 
-    best_squad = tuple[structures.Player, ...]()
-    best_squad_xp = sum(
-        (
-            max(xp for _, xp, _ in gkp_combinations),
-            max(xp for _, xp, _ in def_combinations),
-            max(xp for _, xp, _ in mid_combinations),
-            max(xp for _, xp, _ in fwd_combinations),
-        )
-    )
-    best_linep_xp = best_squad_xp / bench_strength
+    best_squads = list[tuple[float, tuple[structures.Player, ...]]]()
+    best_squad_xp = 0.0
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
     max_mid_xp = max(xp for _, xp, _ in mid_combinations)
 
+    min_def_price = min(price for price, _, _ in def_combinations)
     max_def_xp = max(xp for _, xp, _ in def_combinations)
 
     with tqdm(
@@ -118,76 +108,58 @@ def lineup(
         unit_divisor=1_000,
         ascii=True,
     ) as bar:
-        while (
-            not best_squad
-            and not math.isclose(best_linep_xp, 0.0, abs_tol=0.1)
-            and not math.isclose(best_squad_xp, 0.0, abs_tol=0.1)
-        ):
 
-            best_linep_xp *= 0.9
-            best_squad_xp *= 0.9
+        for gp, gxp, g in gkp_combinations:
+            for fp, fxp, f in fwd_combinations:
+                bar.update(len(def_combinations) * len(mid_combinations))
 
-            bar.clear()
-            bar.reset()
-            bar.write(
-                f"best_linep_xp={best_linep_xp:.2f}, best_squad_xp={best_squad_xp:.2f}"
-            )
+                if gxp + fxp + max_def_xp + max_mid_xp < best_squad_xp:
+                    continue
 
-            for gp, gxp, g in gkp_combinations:
-                for fp, fxp, f in fwd_combinations:
-                    bar.update(len(def_combinations) * len(mid_combinations))
+                if max(C.Counter(p.team for p in g + f).values()) > 3:
+                    continue
 
-                    if gxp + fxp + max_def_xp + max_mid_xp < best_squad_xp:
+                if gp + fp + min_def_price + min_mid_price > budget_upper:
+                    continue
+
+                for dp, dxp, d in def_combinations:
+
+                    if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
+                        break
+
+                    if gp + fp + dp + min_mid_price > budget_upper:
                         continue
 
-                    if max(C.Counter(p.team for p in g + f).values()) > 3:
+                    if gp + fp + dp + max_mid_price < budget_lower:
                         continue
 
-                    for dp, dxp, d in def_combinations:
+                    if max(C.Counter(p.team for p in g + f + d).values()) > 3:
+                        continue
 
-                        if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
+                    for mp, mxp, m in mid_combinations:
+
+                        if gxp + fxp + dxp + mxp < best_squad_xp:
                             break
 
-                        if gp + fp + dp + max_mid_price < budget_lower:
-                            continue
+                        if (
+                            budget_lower <= mp + dp + fp + gp <= budget_upper
+                            and constraints.team_constraint(squad := g + f + d + m, n=3)
+                            and (oxp := helpers.overall_xP(squad)) > best_squad_xp
+                        ):
 
-                        if gp + fp + dp + min_mid_price > budget_upper:
-                            continue
+                            if len(best_squads) >= keep:
+                                heapq.heappushpop(best_squads, (oxp, squad))
+                            else:
+                                heapq.heappush(best_squads, (oxp, squad))
 
-                        if max(C.Counter(p.team for p in g + f + d).values()) > 3:
-                            continue
+                            best_squad_xp = (
+                                statistics.median(v for v, _ in best_squads) * 0.95
+                            )
 
-                        if constraints.gkp_def_same_team(g + d):
-                            continue
-
-                        # One defender per team
-                        if max(C.Counter(p.team for p in d).values()) > 1:
-                            continue
-
-                        for mp, mxp, m in mid_combinations:
-
-                            if gxp + fxp + dxp + mxp < best_squad_xp:
-                                break
-
-                            if (
-                                budget_lower <= mp + dp + fp + gp <= budget_upper
-                                and gxp + fxp + dxp + mxp >= best_linep_xp
-                                and constraints.team_constraint(
-                                    squad := g + f + d + m, n=3
-                                )
-                                and (bl := helpers.best_lineup(squad))
-                                and (blxp := helpers.squad_xP(bl)) > best_linep_xp
-                                and (blxp + gxp + fxp + dxp + mxp) / 2.0 > best_linep_xp
-                            ):
-                                best_linep_xp = (blxp + gxp + fxp + dxp + mxp) / 2.0
-                                best_squad = squad
-                                best_squad_xp = best_linep_xp * bench_strength
-                                assert best_squad_xp >= best_linep_xp
-                                bar.write(
-                                    f"-->> lxp={best_linep_xp:.2f}, gxp={gxp + fxp + dxp + mxp:.2f}"
-                                )
-
-    return best_squad
+    return sorted(
+        [s for _, s in best_squads],
+        key=helpers.overall_xP,
+    )
 
 
 def position_price_candidates(
@@ -214,7 +186,6 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("--bench-strength", type=float, default=1.1)
     parser.add_argument("--budget-lower", type=int, default=900)
     parser.add_argument("--budget-upper", type=int, default=1_000)
     parser.add_argument("--include", nargs="+", default=[])
@@ -222,6 +193,8 @@ def main():
     parser.add_argument("--min-xp", type=float, default=0.0)
     parser.add_argument("--remove", nargs="+", default=[])
     parser.add_argument("--top-position-price", type=int, default=0)
+    parser.add_argument("--gkp-def-not-same-team", action="store_true")
+    parser.add_argument("--max-def-per-team", type=int, default=3)
 
     args = parser.parse_args()
 
@@ -231,13 +204,15 @@ def main():
         if p.mtm >= args.min_mtm and p.xP >= args.min_xp and not p.news
     ]
 
-    remove = set(r.lower() for r in args.remove)
+    remove: set[str] = set(r.lower() for r in args.remove)
     pool = [p for p in pool if p.webname.lower() not in remove]
 
     if args.top_position_price:
-        pool = position_price_candidates(
-            pool=pool,
-            topn=args.top_position_price,
+        pool = list(
+            position_price_candidates(
+                pool=pool,
+                topn=args.top_position_price,
+            )
         )
 
     include = tuple(
@@ -254,16 +229,32 @@ def main():
     pool = list(set(pool))
 
     helpers.lprint(pool)
-    squad = lineup(
+    squads = lineup(
         pool=pool,
-        bench_strength=args.bench_strength,
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
         include=include,
+        keep=1_000,
     )
 
-    helpers.lprint(squad, best=[p.name for p in helpers.best_lineup(squad)])
-    print("-->>", helpers.best_lineup_xP(squad))
+    if args.gkp_def_not_same_team:
+        squads = [s for s in squads if constraints.gkp_def_same_team(s)]
+
+    if args.max_def_per_team:
+        squads = [
+            s
+            for s in squads
+            if max(C.Counter(p.team for p in s if p.position == "DEF").values())
+            <= args.max_def_per_team
+        ]
+
+    for squad in squads:
+        helpers.lprint(squad, best=[p.name for p in helpers.best_lineup(squad)])
+        print(
+            f"lxp: {helpers.best_lineup_xP(squad):.2f} "
+            + f"gxp: {helpers.squad_xP(squad):.2f} "
+            + f"oxp: {helpers.overall_xP(squad):.2f}\n"
+        )
 
 
 if __name__ == "__main__":

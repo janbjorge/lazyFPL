@@ -10,10 +10,6 @@ import helpers
 import structures
 
 
-def squad_score(squad: T.Sequence[structures.Player]) -> float:
-    return (helpers.squad_xP(squad) + helpers.best_lineup_xP(squad)) / 2.0
-
-
 def display(
     old: T.Sequence[structures.Player],
     new: T.Sequence[structures.Player],
@@ -35,9 +31,7 @@ def display(
             "  -->>  "
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
-    tqdm.write(
-        f"lxp gain: {(squad_score(new) - squad_score(old)):.2f}"
-    )
+    tqdm.write(f"lxp gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.2f}")
 
 
 def transfer(
@@ -50,7 +44,7 @@ def transfer(
     max_budget = helpers.squad_price(current)
     min_budget = max_budget * 0.9
 
-    squad_base = dict[int, tuple[tuple[structures.Player, ...], int]]()
+    squad_base = dict[int, tuple[tuple[tuple[structures.Player, ...], int], ...]]()
     for n in range(1, max_transfers + 1):
         squad_base[n] = tuple(
             (c, helpers.squad_price(c))
@@ -60,7 +54,7 @@ def transfer(
             )
         )
 
-    transfer_in = dict[int, tuple[tuple[structures.Player, ...], int]]()
+    transfer_in = dict[int, tuple[tuple[tuple[structures.Player, ...], int], ...]]()
     for n in range(1, max_transfers + 1):
         transfer_in[n] = tuple(
             (c, helpers.squad_price(c))
@@ -74,25 +68,23 @@ def transfer(
     for n in range(1, max_transfers + 1):
         for _ in squad_base[n]:
             total += len(transfer_in[n])
-
     bar.total = total
-    current_xp = helpers.squad_xP(current)
+
+    current_oxp = helpers.overall_xP(current)
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
             for t_in, t_in_cost in transfer_in[n]:
                 cost = base_cost + t_in_cost
-                if cost < min_budget:
-                    continue
                 if cost > max_budget:
                     break
+                if cost < min_budget:
+                    continue
                 squad = base + t_in
 
-                if helpers.squad_xP(squad) < current_xp:
-                    continue
-
                 if (
-                    helpers.valid_squad(squad)
+                    helpers.overall_xP(squad) > current_oxp
+                    and helpers.valid_squad(squad)
                     and len(set(squad)) == 15
                     and constraints.team_constraint(squad, 3)
                 ):
@@ -115,7 +107,11 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    pool = [p for p in fetch.players() if p.xP >= args.min_xp and p.mtm >= args.min_mtm and not p.news]
+    pool = [
+        p
+        for p in fetch.players()
+        if p.xP >= args.min_xp and p.mtm >= args.min_mtm and not p.news
+    ]
     pool = sorted(pool, key=lambda p: p.xP)
     pool = pool[-args.top :]
     print(">>> Pool")
@@ -132,7 +128,7 @@ def main() -> None:
         p for p in fetch.players() if p.name in args.remove or p.team in args.remove
     )
 
-    lxp = squad_score(team)
+    oxp = helpers.overall_xP(team)
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -152,11 +148,11 @@ def main() -> None:
                 if (
                     (not add or all(a in n for a in add))
                     and (not remove or not any(r in n for r in remove))
-                    and squad_score(n) > lxp
+                    and helpers.overall_xP(n) > oxp
                 )
             ),
-            key=lambda x: squad_score(x),
-        )[-(args.top or 25):]:
+            key=helpers.overall_xP,
+        )[-(args.top or 25) :]:
             display(team, new, bar)
 
 

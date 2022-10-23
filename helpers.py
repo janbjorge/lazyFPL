@@ -8,11 +8,8 @@ import numpy as np
 import structures
 
 
-def lookahead() -> int | None:
-    try:
-        return int(os.environ["FPL_LOOKAHEAD"])
-    except KeyError:
-        return None
+def lookahead() -> int:
+    return int(os.environ.get("FPL_LOOKAHEAD", "1"))
 
 
 def backtrace() -> int:
@@ -25,6 +22,10 @@ def squad_price(lineup: T.Sequence["structures.Player"]) -> int:
 
 def squad_xP(lineup: T.Sequence["structures.Player"]) -> float:
     return sum(p.xP for p in lineup)
+
+
+def overall_xP(lineup: T.Sequence["structures.Player"]) -> float:
+    return (squad_xP(lineup) + best_lineup_xP(lineup)) / 2.0
 
 
 def best_lineup(
@@ -117,14 +118,14 @@ def header(
     postfix: str = "",
 ) -> None:
     print(
-        f"{prefix}Price: {squad_price(pool)/10} xP: {squad_xP(pool):.1f} n: {len(pool)}{postfix}",
+        f"{prefix}Price: {squad_price(pool)/10} oxP: {overall_xP(pool):.1f} n: {len(pool)}{postfix}",
     )
 
 
 def xP(
     fixtures: list["structures.Fixture"],
     backtrace: int = backtrace(),
-    lookahead: int | None = lookahead(),
+    lookahead: int = lookahead(),
 ) -> tuple[tuple[float, ...], float]:
 
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
@@ -148,9 +149,9 @@ def xP(
         targets.append(target.points)
         coefficients.append(
             (
-                bt3.points * bt3.relative.combined,
-                bt2.points * bt2.relative.combined,
-                bt1.points * bt1.relative.combined,
+                round(bt3.points / bt3.relative.combined, 2),
+                round(bt2.points / bt2.relative.combined, 2),
+                round(bt1.points / bt1.relative.combined, 2),
             )
         )
 
@@ -167,14 +168,16 @@ def xP(
 
     expected = list[float]()
     inference = [f for f in fixtures if not f.upcoming][-backtrace:]
-    inference = [f.points * f.relative.combined for f in inference]
+    inference = [f.points / f.relative.combined for f in inference]
     upcoming = [f for f in fixtures if f.upcoming]
     for _this, _next in zip(
         upcoming[:lookahead],
         upcoming[1:],
     ):
-        expected.append(np.array(inference).dot(coef.T) / _next.relative.combined)
+        expected.append(np.array(inference).dot(coef.T) * _next.relative.combined)
         inference.pop(0)
-        inference.append(expected[-1] * _this.relative.combined)
+        inference.append(
+            expected[-1] * _this.relative.combined / _next.relative.combined
+        )
 
     return tuple(round(c, 3) for c in coef), sum(expected)

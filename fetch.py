@@ -85,7 +85,7 @@ def players() -> list[structures.Player]:
 
 
 @functools.cache
-def picks(team_id: str) -> T.Sequence[structures.Player]:
+def picks(team_id: str) -> dict:
     gmw = 1
     prev = None
     while req := requests.get(
@@ -93,6 +93,7 @@ def picks(team_id: str) -> T.Sequence[structures.Player]:
     ):
         gmw += 1
         prev = req
+    assert prev is not None
     return prev.json()["picks"]
 
 
@@ -100,6 +101,7 @@ def picks(team_id: str) -> T.Sequence[structures.Player]:
 def my_team(
     team_id: str = os.environ.get("FPL_TEAMID", ""),
 ) -> T.Sequence[structures.Player]:
+    assert team_id
     names = set(player_name(pick["element"]) for pick in picks(team_id))
     return [p for p in players() if p.name in names]
 
