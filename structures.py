@@ -119,3 +119,12 @@ class Player:
     def upcoming_difficulty(self) -> float:
         upcoming = [f for f in self.fixutres if f.upcoming][: helpers.lookahead()]
         return sum(f.relative.combined for f in upcoming)
+
+    def __str__(self):
+        return (
+            f"{self.xP:<6.2f} {self.price:<6.1f} {self.tp:<4} "
+            f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
+            f"{self.position:<9} {self.webname:<20} "
+            f"{' '.join(str(c) for c in self.coefficients):<25} "
+            f"{self.news}"
+        )

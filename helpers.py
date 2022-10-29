@@ -103,13 +103,13 @@ def lprint(
     ):
         players = list(_players)
         header(players, prefix=f"{pos}(", postfix=")")
-        print(f" xP    Price  Team            Player")
+        print(
+            "xP     Price  TP   UD       Team            Position  Player"
+            + " " * 15
+            + "Coefficients              News"
+        )
         for player in players:
-            print(
-                f" {player.xP:<5.1f} {player.price/10:<6}"
-                f" {player.team:<{15}} {player.name}({player.webname}) "
-                f" {'X' if player.name in best else ''}",
-            )
+            print(player)
 
 
 def header(
