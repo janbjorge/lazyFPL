@@ -1,0 +1,16 @@
+black
+certifi
+charset-normalizer
+click
+idna
+mypy
+mypy-extensions
+pathspec
+platformdirs
+pydantic
+python-dateutil
+requests
+six
+tqdm
+typing_extensions
+urllib3
