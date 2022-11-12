@@ -3,6 +3,8 @@ import datetime
 import statistics
 import typing as T
 
+import pydantic
+
 import helpers
 
 
@@ -128,3 +130,81 @@ class Player:
             f"{' '.join(str(c) for c in self.coefficients):<25} "
             f"{self.news}"
         )
+
+
+class HistoricGame(pydantic.BaseModel):
+    name: str
+    position: T.Literal["GK", "DEF", "MID", "FWD"]
+    team: str
+    xP: float
+    assists: int
+    bonus: int
+    bps: int
+    clean_sheets: int
+    creativity: float
+    element: int
+    fixture: float
+    goals_conceded: float
+    goals_scored: float
+    ict_index: float
+    influence: float
+    kickoff_time: datetime.datetime
+    minutes: int
+    opponent_team: int
+    own_goals: int
+    penalties_missed: int
+    penalties_saved: int
+    red_cards: int
+    round: int
+    saves: int
+    selected: int
+    team_a_score: int
+    team_h_score: int
+    threat: float
+    total_points: int
+    transfers_balance: int
+    transfers_in: int
+    transfers_out: int
+    value: int
+    was_home: bool
+    yellow_cards: int
+    GW: int
+
+
+class UpcommingGame(pydantic.BaseModel):
+    code: int
+    difficulty: int
+    event_name: str | None
+    event: int | None
+    finished: bool
+    id: int
+    is_home: bool
+    kickoff_time: datetime.datetime | None
+    minutes: int
+    provisional_start_time: bool
+    team_a_score: int | None
+    team_a: int
+    team_h_score: int | None
+    team_h: int
+
+
+class Team(pydantic.BaseModel):
+    code: int
+    draw: int
+    id: int
+    loss: int
+    name: str
+    played: int
+    points: int
+    position: int
+    pulse_id: int
+    short_name: str
+    strength: int
+    strength_attack_away: int
+    strength_attack_home: int
+    strength_defence_away: int
+    strength_defence_home: int
+    strength_overall_away: int
+    strength_overall_home: int
+    unavailable: bool
+    win: int

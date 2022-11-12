@@ -1,4 +1,5 @@
 import collections
+import functools
 import itertools
 import os
 import typing as T
@@ -8,10 +9,17 @@ import numpy as np
 import structures
 
 
+@functools.cache
+def debug() -> bool:
+    return bool(os.environ.get("FPL_DEBUG"))
+
+
+@functools.cache
 def lookahead() -> int:
     return int(os.environ.get("FPL_LOOKAHEAD", "1"))
 
 
+@functools.cache
 def backtrace() -> int:
     return int(os.environ.get("FPL_BACKTRACE", "3"))
 

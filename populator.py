@@ -1,13 +1,16 @@
-from dateutil.parser import parse as dt_parser
 import csv
 import functools
 import io
+import pprint
 import typing as T
 
 from tqdm import tqdm
+import pydantic
 import requests
 
 import database
+import helpers
+import structures
 
 
 @functools.cache
@@ -36,7 +39,7 @@ def db_name_pid() -> dict[str, int]:
             name
         FROM
             player
-    """
+        """
         )
     }
 
@@ -55,7 +58,8 @@ def player_id_fuzzer(name: str) -> int:
     raise KeyError(name)
 
 
-def past_team_lists() -> dict[str, list[dict]]:
+@functools.cache
+def past_team_lists() -> dict[str, list[structures.Team]]:
     urls = (
         (
             "2022-23",
@@ -67,7 +71,10 @@ def past_team_lists() -> dict[str, list[dict]]:
         ),
     )
     return {
-        session: list(csv.DictReader(io.StringIO(requests.get(url).text)))
+        session: list(
+            structures.Team.parse_obj(t)
+            for t in csv.DictReader(io.StringIO(requests.get(url).text))
+        )
         for session, url in urls
     }
 
@@ -76,11 +83,12 @@ def past_team_lists() -> dict[str, list[dict]]:
 def past_team_lookup(tid: int, session: str) -> str:
     assert isinstance(tid, int)
     for team in past_team_lists()[session]:
-        if int(team["id"]) == tid:
-            return team["name"]
+        if team.id == tid:
+            return team.name
     raise ValueError(f"No match: {tid} / {session}.")
 
 
+@functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     urls = (
         (
@@ -98,7 +106,7 @@ def past_game_lists() -> dict[str, list[dict]]:
     }
 
 
-def structure() -> None:
+def initialize_database() -> None:
     database.execute(
         """
         CREATE TABLE team (
@@ -171,15 +179,15 @@ def populate_teams() -> None:
             database.execute(
                 sql,
                 (
-                    team["name"],
+                    team.name,
                     session,
-                    team["id"],
-                    team["strength_attack_away"],
-                    team["strength_attack_home"],
-                    team["strength_defence_away"],
-                    team["strength_defence_home"],
-                    team["strength_overall_away"],
-                    team["strength_overall_home"],
+                    team.id,
+                    team.strength_attack_away,
+                    team.strength_attack_home,
+                    team.strength_defence_away,
+                    team.strength_defence_home,
+                    team.strength_overall_away,
+                    team.strength_overall_home,
                 ),
             )
 
@@ -247,31 +255,49 @@ def populate_games(current_session="2022-23") -> None:
             unit_divisor=1_000,
             unit_scale=True,
         ):
+
+            # Dafuq pydantic?!
+            game.pop(None, None)
+
             try:
-                pid = player_id_fuzzer(game["name"])
-            except KeyError:
+                historic = structures.HistoricGame.parse_obj(game)
+            except pydantic.ValidationError as e:
+                if helpers.debug():
+                    pprint.pp(game)
+                    print(str(e))
                 continue
+
+            try:
+                pid = player_id_fuzzer(historic.name)
+            except KeyError as e:
+                if helpers.debug():
+                    print(e)
+                continue
+
             try:
                 database.execute(
                     game_sql,
                     (
                         session,
                         False,
-                        game["was_home"],
-                        dt_parser(game["kickoff_time"]).timestamp(),
-                        game["minutes"],
-                        game["total_points"],
-                        game["position"],
+                        historic.was_home,
+                        historic.kickoff_time,
+                        historic.minutes,
+                        historic.total_points,
+                        historic.position,
                         pid,
                         session,
-                        game["team"],
+                        historic.team,
                         session,
-                        past_team_lookup(int(game["opponent_team"]), session),
+                        past_team_lookup(historic.opponent_team, session),
                     ),
                 )
-            except database.sqlite3.IntegrityError:
+            except database.sqlite3.IntegrityError as e:
                 # The player does not play this year.
+                if helpers.debug():
+                    print(e)
                 continue
+
     database.execute(
         """
         UPDATE
@@ -295,11 +321,17 @@ def populate_games(current_session="2022-23") -> None:
     ):
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
         team = upcoming_team_id_to_name(ele["team"])
-        for upcoming in summary(ele["id"])["fixtures"]:
+        for game in summary(ele["id"])["fixtures"]:
+            try:
+                upcoming = structures.UpcommingGame.parse_obj(game)
+            except pydantic.ValidationError as e:
+                if helpers.debug():
+                    print(str(e))
+                    pprint.pp(game)
             # A past game, data allready logged.
-            if upcoming["event"] in upcoming_games:
-                team_h = upcoming_team_id_to_name(upcoming["team_h"])
-                team_a = upcoming_team_id_to_name(upcoming["team_a"])
+            if upcoming.event in upcoming_games:
+                team_h = upcoming_team_id_to_name(upcoming.team_h)
+                team_a = upcoming_team_id_to_name(upcoming.team_a)
                 is_home = team == team_h
                 opponent = list({team, team_a, team_h} - {team})[0]
                 database.execute(
@@ -308,7 +340,7 @@ def populate_games(current_session="2022-23") -> None:
                         current_session,
                         True,
                         is_home,
-                        dt_parser(upcoming["kickoff_time"]).timestamp(),
+                        upcoming.kickoff_time,
                         None,
                         None,
                         upcoming_position(fullname),
@@ -339,7 +371,7 @@ def upcoming_position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
 
 
 if __name__ == "__main__":
-    structure()
+    initialize_database()
     populate_teams()
     populate_players()
     populate_games()
