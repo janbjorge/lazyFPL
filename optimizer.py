@@ -20,7 +20,7 @@ def lineup(
     budget_lower: int = 900,
     budget_upper: int = 1_000,
     include: T.Sequence[structures.Player] = tuple(),
-    keep: int = 1_000,
+    n_squads: int = 1_000,
 ) -> T.Sequence[T.Sequence[structures.Player]]:
 
     gkp_combinations = sorted(
@@ -147,7 +147,7 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
 
-                            if len(best_squads) >= keep:
+                            if len(best_squads) >= n_squads:
                                 heapq.heappushpop(best_squads, (oxp, squad))
                             else:
                                 heapq.heappush(best_squads, (oxp, squad))
@@ -215,15 +215,14 @@ def main():
             )
         )
 
-    include = tuple(
+    include = list(
         set(
             p
             for p in fetch.players()
-            if p.webname in args.include or p.name in args.include
+            if p.webname in args.include or p.name in args.include or p.team in args.include
         )
     )
-    assert len(include) == len(args.include), (include, args.include)
-    pool.extend([p for p in pool if p.name in include])
+    pool += include
 
     # Just in case
     pool = list(set(pool))
@@ -234,7 +233,7 @@ def main():
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
         include=include,
-        keep=1_000,
+        n_squads=1_000,
     )
 
     if args.gkp_def_not_same_team:
