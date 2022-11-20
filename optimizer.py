@@ -195,14 +195,14 @@ def main():
     parser.add_argument("--top-position-price", type=int, default=0)
     parser.add_argument("--gkp-def-not-same-team", action="store_true")
     parser.add_argument("--max-def-per-team", type=int, default=3)
+    parser.add_argument("--no-news", action="store_true")
 
     args = parser.parse_args()
 
-    pool = [
-        p
-        for p in fetch.players()
-        if p.mtm >= args.min_mtm and p.xP >= args.min_xp and not p.news
-    ]
+    pool = [p for p in fetch.players() if p.mtm >= args.min_mtm and p.xP >= args.min_xp]
+
+    if args.no_news:
+        pool = [p for p in pool if not p.news]
 
     remove: set[str] = set(r.lower() for r in args.remove)
     pool = [p for p in pool if p.webname.lower() not in remove]
@@ -219,7 +219,9 @@ def main():
         set(
             p
             for p in fetch.players()
-            if p.webname in args.include or p.name in args.include or p.team in args.include
+            if p.webname in args.include
+            or p.name in args.include
+            or p.team in args.include
         )
     )
     pool += include

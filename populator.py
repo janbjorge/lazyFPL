@@ -1,16 +1,23 @@
 import csv
+import datetime
 import functools
 import io
 import pprint
 import typing as T
 
+from dateutil.parser import parse as dtparser
 from tqdm import tqdm
 import pydantic
+import pytz
 import requests
 
 import database
 import helpers
 import structures
+
+
+def now_tz_utc() -> datetime.datetime:
+    return datetime.datetime.now(tz=pytz.utc)
 
 
 @functools.cache
@@ -309,9 +316,10 @@ def populate_games(current_session="2022-23") -> None:
     """
     )
 
-    upcoming_games = set[int](
-        e["id"] for e in bootstrap()["events"] if not e["chip_plays"]
-    )
+    now = now_tz_utc()
+    upcoming_games: list[int] = [
+        e["id"] for e in bootstrap()["events"] if dtparser(e["deadline_time"]) > now
+    ]
     for ele in tqdm(
         bootstrap()["elements"],
         ascii=True,
@@ -322,12 +330,14 @@ def populate_games(current_session="2022-23") -> None:
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
         team = upcoming_team_id_to_name(ele["team"])
         for game in summary(ele["id"])["fixtures"]:
+
             try:
                 upcoming = structures.UpcommingGame.parse_obj(game)
             except pydantic.ValidationError as e:
                 if helpers.debug():
                     print(str(e))
                     pprint.pp(game)
+
             # A past game, data allready logged.
             if upcoming.event in upcoming_games:
                 team_h = upcoming_team_id_to_name(upcoming.team_h)

@@ -66,7 +66,9 @@ def players() -> list[structures.Player]:
 
         try:
             team = [g for g in games if g.upcoming][-1].team
-        except IndexError:
+        except IndexError as e:
+            if helpers.debug():
+                print(e)
             continue
 
         pool.append(

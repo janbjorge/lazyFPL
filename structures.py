@@ -134,7 +134,7 @@ class Player:
 
 class HistoricGame(pydantic.BaseModel):
     name: str
-    position: T.Literal["GK", "DEF", "MID", "FWD"]
+    position: T.Literal["GK", "DEF", "MID", "FWD", "GKP"]
     team: str
     xP: float
     assists: int
