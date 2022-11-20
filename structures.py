@@ -6,6 +6,7 @@ import typing as T
 import pydantic
 
 import helpers
+import ml_model
 
 
 @dataclasses.dataclass(frozen=True)
@@ -96,9 +97,6 @@ class Player:
                 backtrace=backtrace,
                 lookahead=lookahead,
             )
-        elif points := [f.points for f in self.fixutres if f.points is not None]:
-            self.coefficients = (round(1 / backtrace, 3),) * backtrace
-            self.xP = statistics.mean(points) * (lookahead or 38 - len(points))
         else:
             self.xP = 0
             self.coefficients = tuple()

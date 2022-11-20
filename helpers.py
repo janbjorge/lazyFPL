@@ -169,8 +169,8 @@ def xP(
         rcond=None,
     )
 
-    _sum = coef.sum()
-    if abs(_sum) > 1e-6:
+    _sum = sum(abs(v) for v in coef)
+    if abs(_sum) > 1e-7:
         coef = coef / _sum
     coef = np.clip(coef, -1, 1)
 
