@@ -2,12 +2,9 @@ import argparse
 import collections as C
 import heapq
 import itertools
-import statistics
 import typing as T
 
-from tqdm import (
-    tqdm,
-)
+from tqdm import tqdm
 
 import constraints
 import fetch
@@ -16,12 +13,13 @@ import structures
 
 
 def lineup(
-    pool: T.Sequence[structures.Player],
+    pool: T.Sequence["structures.Player"],
     budget_lower: int = 900,
     budget_upper: int = 1_000,
-    include: T.Sequence[structures.Player] = tuple(),
+    include: T.Sequence["structures.Player"] = tuple(),
     n_squads: int = 1_000,
-) -> T.Sequence[T.Sequence[structures.Player]]:
+    init_squad_xp: float = 0.0,
+) -> T.Sequence[T.Sequence["structures.Player"]]:
 
     gkp_combinations = sorted(
         (
@@ -91,8 +89,8 @@ def lineup(
     if not total:
         return []
 
-    best_squads = list[tuple[float, tuple[structures.Player, ...]]]()
-    best_squad_xp = 0.0
+    best_squads = list[tuple[tuple[float, int, str], tuple[structures.Player, ...]]]()
+    best_squad_xp = init_squad_xp
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
@@ -142,18 +140,24 @@ def lineup(
                             break
 
                         if (
-                            budget_lower <= mp + dp + fp + gp <= budget_upper
+                            budget_lower <= (cost := mp + dp + fp + gp) <= budget_upper
                             and constraints.team_constraint(squad := g + f + d + m, n=3)
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
-
+                            player_names = " - ".join(p.name for p in squad)
                             if len(best_squads) >= n_squads:
-                                heapq.heappushpop(best_squads, (oxp, squad))
+                                heapq.heappushpop(
+                                    best_squads,
+                                    ((oxp, budget_upper - cost, player_names), squad),
+                                )
                             else:
-                                heapq.heappush(best_squads, (oxp, squad))
-
-                            best_squad_xp = (
-                                statistics.median(v for v, _ in best_squads) * 0.95
+                                heapq.heappush(
+                                    best_squads,
+                                    ((oxp, budget_upper - cost, player_names), squad),
+                                )
+                            best_squad_xp = max(
+                                max(v for (v, *_), _ in best_squads) * 0.99,
+                                init_squad_xp,
                             )
 
     return sorted(
@@ -163,9 +167,9 @@ def lineup(
 
 
 def position_price_candidates(
-    pool: T.Sequence[structures.Player],
+    pool: T.Sequence["structures.Player"],
     topn: int = 5,
-) -> T.Sequence[structures.Player]:
+) -> T.Sequence["structures.Player"]:
 
     new: list[structures.Player] = []
 
@@ -196,6 +200,7 @@ def main():
     parser.add_argument("--gkp-def-not-same-team", action="store_true")
     parser.add_argument("--max-def-per-team", type=int, default=3)
     parser.add_argument("--no-news", action="store_true")
+    parser.add_argument("--init-squad-xp", type=float, default=0.0)
 
     args = parser.parse_args()
 
@@ -235,7 +240,8 @@ def main():
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
         include=include,
-        n_squads=1_000,
+        n_squads=250,
+        init_squad_xp=args.init_squad_xp,
     )
 
     if args.gkp_def_not_same_team:

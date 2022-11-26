@@ -1,36 +1,70 @@
-import torch
+import argparse
+import dataclasses
+import pickle
 
-torch.set_printoptions(threshold=10_000)
-from torch.utils.data import Dataset as TorchDataset, DataLoader as TorchDataLoader
-import cache
+import torch
+from torch.utils.data import DataLoader as TorchDataLoader
+from torch.utils.data import Dataset as TorchDataset
+from tqdm import tqdm
+
+import database
+import fetch
+import helpers
+import populator
 import structures
+
+if helpers.debug():
+    torch.set_printoptions(threshold=10_000)
 
 
 class Net(torch.nn.Module):
-    def __init__(self, sensors: int, lstm_hidden: int = 4) -> None:
+    def __init__(self, sensors: int, rnn_hidden: int = 16) -> None:
         super().__init__()
+        self.rrn_hidden = rnn_hidden
         self.num_layers = 1
-        self.lstm_hidden = lstm_hidden
-        self.lstm = torch.nn.LSTM(
+        self.sensors = sensors
+        self.dropout = torch.nn.Dropout(0.5)
+        self.rnn = torch.nn.GRU(
             input_size=sensors,
-            hidden_size=lstm_hidden,
+            hidden_size=rnn_hidden,
             batch_first=True,
             num_layers=self.num_layers,
         )
         self.linear = torch.nn.Linear(
-            in_features=lstm_hidden,
+            in_features=rnn_hidden,
             out_features=1,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size = x.shape[0]
-        h0 = torch.zeros(self.num_layers, batch_size, self.lstm_hidden).requires_grad_()
-        c0 = torch.zeros(self.num_layers, batch_size, self.lstm_hidden).requires_grad_()
+        h_init = torch.zeros(
+            self.num_layers,
+            batch_size,
+            self.rrn_hidden,
+        ).requires_grad_()
+        _, h_final = self.rnn(x, h_init)
+        return self.linear(self.dropout(h_final)).flatten()
 
-        _, (hn, _) = self.lstm(x, (h0, c0))
 
-        out = self.linear(hn[0]).flatten()
-        return out
+def features(f: "structures.Fixture") -> tuple[float, ...]:
+    assert f.points is not None
+    strengt_scale = 1000
+    return (
+        f.at_home,
+        f.points,
+        f.opponent_strength_attack_away / strengt_scale,
+        f.opponent_strength_attack_home / strengt_scale,
+        f.opponent_strength_defence_away / strengt_scale,
+        f.opponent_strength_defence_home / strengt_scale,
+        f.opponent_strength_overall_away / strengt_scale,
+        f.opponent_strength_overall_home / strengt_scale,
+        f.team_strength_attack_away / strengt_scale,
+        f.team_strength_attack_home / strengt_scale,
+        f.team_strength_defence_away / strengt_scale,
+        f.team_strength_defence_home / strengt_scale,
+        f.team_strength_overall_away / strengt_scale,
+        f.team_strength_overall_home / strengt_scale,
+    )
 
 
 class SequenceDataset(TorchDataset):
@@ -42,146 +76,166 @@ class SequenceDataset(TorchDataset):
         x, y = samples(fixtures, backtrace)
         self.x, self.y = torch.Tensor(x), torch.Tensor(y)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.x.shape[0]
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         return self.x[idx], self.y[idx]
 
 
 def samples(
     fixtures: list["structures.Fixture"],
     backtrace: int = 3,
-) -> tuple[list[tuple[float, ...]], list[float]]:
+) -> tuple[list[tuple[tuple[float, ...], ...]], list[float]]:
 
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
     back = (backtrace + 2) ** 2
+    assert isinstance(back, int) and back > 0
     train = [f for f in fixtures if not f.upcoming][-back:]
 
     assert len(train) >= backtrace
     targets = list[float]()
-    coefficients = list[tuple[float, ...]]()
+    coefficients = list[tuple[tuple[float, ...], ...]]()
 
     while len(train) > backtrace:
         target = train.pop(-1)
-        bt1, bt2, bt3 = train[-backtrace:]
-
+        sub = tuple(features(f) for f in train[-backtrace:])
+        coefficients.append(sub)
         assert target.points is not None
-        assert bt1.points is not None
-        assert bt2.points is not None
-        assert bt3.points is not None
-
         targets.append(target.points)
-        coefficients.append(
-            (
-                bt1.at_home,
-                bt2.at_home,
-                bt3.at_home,
-                bt1.points,
-                bt2.points,
-                bt3.points,
-                bt1.team_strength_attack_home,
-                bt1.team_strength_attack_away,
-                bt1.team_strength_defence_home,
-                bt1.team_strength_defence_away,
-                bt1.team_strength_overall_home,
-                bt1.team_strength_overall_away,
-                bt1.opponent_strength_attack_home,
-                bt1.opponent_strength_attack_away,
-                bt1.opponent_strength_defence_home,
-                bt1.opponent_strength_defence_away,
-                bt1.opponent_strength_overall_home,
-                bt1.opponent_strength_overall_away,
-                bt2.team_strength_attack_home,
-                bt2.team_strength_attack_away,
-                bt2.team_strength_defence_home,
-                bt2.team_strength_defence_away,
-                bt2.team_strength_overall_home,
-                bt2.team_strength_overall_away,
-                bt2.opponent_strength_attack_home,
-                bt2.opponent_strength_attack_away,
-                bt2.opponent_strength_defence_home,
-                bt2.opponent_strength_defence_away,
-                bt2.opponent_strength_overall_home,
-                bt2.opponent_strength_overall_away,
-                bt3.team_strength_attack_home,
-                bt3.team_strength_attack_away,
-                bt3.team_strength_defence_home,
-                bt3.team_strength_defence_away,
-                bt3.team_strength_overall_home,
-                bt3.team_strength_overall_away,
-                bt3.opponent_strength_attack_home,
-                bt3.opponent_strength_attack_away,
-                bt3.opponent_strength_defence_home,
-                bt3.opponent_strength_defence_away,
-                bt3.opponent_strength_overall_home,
-                bt3.opponent_strength_overall_away,
-            )
-        )
 
     return coefficients, targets
 
 
-@cache.fcache
-def train(player: "structures.Player"):
-    # players = fetch.players()
-    # player = [p for p in players if p.webname == "Salah"][0]
-    # player = [p for p in players if p.webname == "Robertson"][0]
-    # player = [p for p in players if p.webname == "Kane"][0]
-    # player = [p for p in players if p.webname == "Haaland"][0]
-    # print(player)
+def train(
+    player: "structures.Player",
+    epochs: int = 50,
+    lr: float = 1e-2,
+):
+
     ds = SequenceDataset(player.fixutres)
-    loader = TorchDataLoader(
-        ds,
-        batch_size=4,
-    )
+    loader = TorchDataLoader(ds, batch_size=8, shuffle=True)
 
     loss_function = torch.nn.MSELoss()
-    net = Net(ds[0][0].shape[0])
-    lr = 1e-2
+    net = Net(ds[0][0].shape[-1])
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
-    epchs = 500
-    for epch in range(500):
-        train_loss = 0
-        bucket = 0
-        out = 0
+
+    for _ in range(epochs):
         for x, y in loader:
-            x = x[None, :]
-            x = x.permute(1, 0, 2)
             output = net(x)
-            out += output.sum().detach().numpy()
             assert output.shape == y.shape
             loss = loss_function(output, y)
             optimizer.zero_grad()
             loss.backward()
-
             optimizer.step()
-            train_loss += loss.detach().numpy()
-            bucket += x.shape[0]
-
-        # print(epch, round(epch / epchs * 100), train_loss, out / bucket)
-    print(train_loss, out / bucket)
-    # for name, pars in net.named_parameters():
-    #     print(name, pars.shape)
-    print("--- DONE ---")
     return net
 
 
-if __name__ == "__main__":
+def load(player: "structures.Player") -> "Net":
+    pid = populator.player_id_fuzzer(player.name)
+    if bts := database.fetch_model(pid):
+        ms = pickle.loads(bts)
+        n = Net(sensors=ms["sensors"], rnn_hidden=ms["rnn_hidden"])
+        n.load_state_dict(ms["weights"])
+        return n
+    raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
 
-    import fetch
-    for player in fetch.players():
-        print(player)
-        try: 
-            train(player)
-        except Exception as e:
-            print(e)
-    # players = fetch.players()
-    # for p in pla
-    # player = [p for p in players if p.webname == "Salah"][0]
-    # player = [p for p in players if p.webname == "Robertson"][0]
-    # player = [p for p in players if p.webname == "Kane"][0]
-    # player = [p for p in players if p.webname == "Haaland"][0]
-    # print(player)
-    # train(player)
+
+def save(player: "structures.Player", m: "Net") -> None:
+    database.set_model(
+        populator.player_id_fuzzer(player.name),
+        pickle.dumps(
+            dict(
+                inputs=m.num_layers,
+                rnn_hidden=m.rrn_hidden,
+                sensors=m.sensors,
+                weights=m.state_dict(),
+            )
+        ),
+    )
+
+
+def xP(
+    player: "structures.Player",
+    lookahead: int = helpers.lookahead(),
+    backtrace: int = helpers.backtrace(),
+) -> float:
+    model = load(player)
+    expected = list[float]()
+    inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
+    upcoming = [f for f in player.fixutres if f.upcoming]
+
+    debug = helpers.debug()
+    with torch.no_grad():
+        for _next in upcoming[:lookahead]:
+            if debug:
+                for i in inference:
+                    print(i)
+            points = round(model(torch.Tensor((inference,))).detach().numpy()[0], 2)
+            expected.append(points)
+            inference.pop(0)
+            inference.append(
+                features(
+                    structures.Fixture(
+                        **(dataclasses.asdict(_next) | dict(points=points))
+                    )
+                )
+            )
+
+    if debug:
+        print(player.name, player.team, expected)
+
+    return sum(expected)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="Player ml trainer",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=1e-2,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-mtm",
+        type=int,
+        default=45,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=50,
+        help="(default: %(default)s)",
+    )
+
+    args = parser.parse_args()
+
+    players = [p for p in fetch.players() if p.mtm >= args.min_mtm]
+
+    with tqdm(
+        total=len(players),
+        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+        unit_scale=True,
+        unit_divisor=1_000,
+        ascii=True,
+    ) as bar:
+        for player in players:
+            bar.update(1)
+            m = train(player, epochs=args.epochs, lr=args.lr)
+            save(player, m)
+            bar.write(
+                f"{xP(player):.2f} "
+                + f"{player.name} ("
+                + f"{player.team} - "
+                + f"{player.next_opponent})"
+            )
+
+
+if __name__ == "__main__":
+    main()

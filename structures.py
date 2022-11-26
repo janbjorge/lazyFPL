@@ -6,7 +6,6 @@ import typing as T
 import pydantic
 
 import helpers
-import ml_model
 
 
 @dataclasses.dataclass(frozen=True)
@@ -76,7 +75,6 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
-    coefficients: tuple[float, ...] = dataclasses.field(compare=False, init=False)
     fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=False)
@@ -84,22 +82,7 @@ class Player:
     price: int = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
-    xP: float = dataclasses.field(compare=False, init=False)
-
-    def __post_init__(self):
-        backtrace = helpers.backtrace()
-        lookahead = helpers.lookahead()
-
-        enough_observations = sum(not f.upcoming for f in self.fixutres) > backtrace
-        if enough_observations:
-            self.coefficients, self.xP = helpers.xP(
-                fixtures=self.fixutres,
-                backtrace=backtrace,
-                lookahead=lookahead,
-            )
-        else:
-            self.xP = 0
-            self.coefficients = tuple()
+    xP: float = 0.0
 
     @property
     def tp(self) -> int:
@@ -120,12 +103,17 @@ class Player:
         upcoming = [f for f in self.fixutres if f.upcoming][: helpers.lookahead()]
         return sum(f.relative.combined for f in upcoming)
 
+    @property
+    def next_opponent(self) -> str:
+        return min(
+            [f for f in self.fixutres if f.upcoming], key=lambda f: f.kickoff_time
+        ).opponent
+
     def __str__(self):
         return (
             f"{self.xP:<6.2f} {self.price:<6.1f} {self.tp:<4} "
             f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
-            f"{' '.join(str(c) for c in self.coefficients):<25} "
             f"{self.news}"
         )
 

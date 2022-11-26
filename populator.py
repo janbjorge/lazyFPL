@@ -5,11 +5,11 @@ import io
 import pprint
 import typing as T
 
-from dateutil.parser import parse as dtparser
-from tqdm import tqdm
 import pydantic
 import pytz
 import requests
+from dateutil.parser import parse as dtparser
+from tqdm import tqdm
 
 import database
 import helpers
@@ -66,7 +66,7 @@ def player_id_fuzzer(name: str) -> int:
 
 
 @functools.cache
-def past_team_lists() -> dict[str, list[structures.Team]]:
+def past_team_lists() -> dict[str, list["structures.Team"]]:
     urls = (
         (
             "2022-23",
@@ -140,6 +140,7 @@ def initialize_database() -> None:
             price INTEGER NOT NULL,
             team_id INTEGER NOT NULL,
             news TEXT NOT NULL,
+            model BLOB,
             FOREIGN KEY(team_id) REFERENCES team(id),
             UNIQUE(webname, name, team_id)
         );

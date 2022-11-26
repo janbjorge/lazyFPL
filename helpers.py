@@ -114,7 +114,7 @@ def lprint(
         print(
             "xP     Price  TP   UD       Team            Position  Player"
             + " " * 15
-            + "Coefficients              News"
+            + "News"
         )
         for player in players:
             print(player)

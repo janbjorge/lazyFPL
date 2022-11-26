@@ -1,8 +1,8 @@
+import datetime
 import functools
 import os
 import pathlib
 import sqlite3
-import datetime
 import typing as T
 
 import pydantic
@@ -37,7 +37,7 @@ class Game(pydantic.BaseModel):
 
 
 def dbfile(
-    file: str = os.environ.get("FPL_DATABASE", "database.sqlite3")
+    file: str = os.environ.get("FPL_DATABASE", ".database.sqlite3")
 ) -> pathlib.Path:
     return pathlib.Path(file)
 
@@ -121,3 +121,31 @@ def webname(pid: int) -> str:
         (pid,),
     )
     return rows[0]["webname"]
+
+
+def set_model(player_id: int, model: bytes):
+    execute(
+        """
+        UPDATE
+            player
+        SET
+            model = ?
+        WHERE
+            id = ?
+    """,
+        (model, player_id),
+    )
+
+
+def fetch_model(player_id: int) -> bytes:
+    return execute(
+        """
+        SELECT
+            model
+        FROM
+            player
+        WHERE
+            id =?
+    """,
+        (player_id,),
+    )[0]["model"]

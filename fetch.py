@@ -5,9 +5,9 @@ import typing as T
 
 import requests
 
-
 import database
 import helpers
+import ml_model
 import structures
 
 
@@ -27,7 +27,7 @@ def player_name(pid: int) -> str:
 
 
 @functools.cache
-def players() -> list[structures.Player]:
+def players() -> list["structures.Player"]:
 
     pool = list[structures.Player]()
 
@@ -82,6 +82,12 @@ def players() -> list[structures.Player]:
                 webname=database.webname(games[-1].player_id),
             )
         )
+
+    for p in pool:
+        try:
+            p.xP = ml_model.xP(p)
+        except ValueError:
+            p.xP = 0
 
     return pool
 
