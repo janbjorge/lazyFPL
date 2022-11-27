@@ -46,24 +46,30 @@ class Net(torch.nn.Module):
         return self.linear(self.dropout(h_final)).flatten()
 
 
+def normalization(v: float, s: "database.SampleSummay") -> float:
+    assert s.variance > 0
+    return (v - s.mean) / s.variance
+
+
 def features(f: "structures.Fixture") -> tuple[float, ...]:
     assert f.points is not None
-    strengt_scale = 1000
+    p_scale = database.points()
+    s_scale = database.strengths()
     return (
         f.at_home,
-        f.points,
-        f.opponent_strength_attack_away / strengt_scale,
-        f.opponent_strength_attack_home / strengt_scale,
-        f.opponent_strength_defence_away / strengt_scale,
-        f.opponent_strength_defence_home / strengt_scale,
-        f.opponent_strength_overall_away / strengt_scale,
-        f.opponent_strength_overall_home / strengt_scale,
-        f.team_strength_attack_away / strengt_scale,
-        f.team_strength_attack_home / strengt_scale,
-        f.team_strength_defence_away / strengt_scale,
-        f.team_strength_defence_home / strengt_scale,
-        f.team_strength_overall_away / strengt_scale,
-        f.team_strength_overall_home / strengt_scale,
+        normalization(f.points, p_scale),
+        normalization(f.opponent_strength_attack_away, s_scale["strength_attack_away"]),
+        normalization(f.opponent_strength_attack_home, s_scale["strength_attack_home"]),
+        normalization(f.opponent_strength_defence_away, s_scale["strength_defence_away"]),
+        normalization(f.opponent_strength_defence_home, s_scale["strength_defence_home"]),
+        normalization(f.opponent_strength_overall_away, s_scale["strength_overall_away"]),
+        normalization(f.opponent_strength_overall_home, s_scale["strength_overall_home"]),
+        normalization(f.team_strength_attack_away, s_scale["strength_attack_away"]),
+        normalization(f.team_strength_attack_home, s_scale["strength_attack_home"]),
+        normalization(f.team_strength_defence_away, s_scale["strength_defence_away"]),
+        normalization(f.team_strength_defence_home, s_scale["strength_defence_home"]),
+        normalization(f.team_strength_overall_away, s_scale["strength_overall_away"]),
+        normalization(f.team_strength_overall_home, s_scale["strength_overall_home"]),
     )
 
 
@@ -161,12 +167,13 @@ def xP(
     lookahead: int = helpers.lookahead(),
     backtrace: int = helpers.backtrace(),
 ) -> float:
-    model = load(player)
+
+    debug = helpers.debug()
     expected = list[float]()
     inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
     upcoming = [f for f in player.fixutres if f.upcoming]
 
-    debug = helpers.debug()
+    model = load(player)
     with torch.no_grad():
         for _next in upcoming[:lookahead]:
             if debug:
@@ -191,7 +198,7 @@ def xP(
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="Player ml trainer",
+        prog="Player model trainer.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -219,11 +226,11 @@ def main():
     players = [p for p in fetch.players() if p.mtm >= args.min_mtm]
 
     with tqdm(
-        total=len(players),
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
-        unit_scale=True,
-        unit_divisor=1_000,
         ascii=True,
+        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+        total=len(players),
+        unit_divisor=1_000,
+        unit_scale=True,
     ) as bar:
         for player in players:
             bar.update(1)

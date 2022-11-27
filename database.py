@@ -1,11 +1,20 @@
+import collections
+import dataclasses
 import datetime
 import functools
 import os
 import pathlib
 import sqlite3
+import statistics
 import typing as T
 
 import pydantic
+
+
+@dataclasses.dataclass(frozen=True)
+class SampleSummay:
+    mean: float
+    variance: float
 
 
 class Game(pydantic.BaseModel):
@@ -123,7 +132,7 @@ def webname(pid: int) -> str:
     return rows[0]["webname"]
 
 
-def set_model(player_id: int, model: bytes):
+def set_model(player_id: int, model: bytes) -> None:
     execute(
         """
         UPDATE
@@ -149,3 +158,52 @@ def fetch_model(player_id: int) -> bytes:
     """,
         (player_id,),
     )[0]["model"]
+
+
+@functools.cache
+def points() -> SampleSummay:
+    p = [
+        row["points"]
+        for row in execute(
+            """
+        SELECT
+            points
+        FROM
+            game
+        WHERE
+            points is not null
+    """
+        )
+    ]
+    return SampleSummay(
+        mean=statistics.mean(p),
+        variance=statistics.variance(p),
+    )
+
+
+@functools.cache
+def strengths() -> dict[str, SampleSummay]:
+    rows = execute(
+        """
+        SELECT
+            strength_attack_away,
+            strength_attack_home,
+            strength_defence_away,
+            strength_defence_home,
+            strength_overall_away,
+            strength_overall_home
+        FROM
+            team
+    """
+    )
+    samples = collections.defaultdict(list)
+    for row in rows:
+        for k, v in row.items():
+            samples[k].append(v)
+    return {
+        k: SampleSummay(
+            mean=statistics.mean(v),
+            variance=statistics.variance(v),
+        )
+        for k, v in samples.items()
+    }
