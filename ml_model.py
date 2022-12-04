@@ -56,20 +56,59 @@ def features(f: "structures.Fixture") -> tuple[float, ...]:
     p_scale = database.points()
     s_scale = database.strengths()
     return (
-        f.at_home,
-        normalization(f.points, p_scale),
-        normalization(f.opponent_strength_attack_away, s_scale["strength_attack_away"]),
-        normalization(f.opponent_strength_attack_home, s_scale["strength_attack_home"]),
-        normalization(f.opponent_strength_defence_away, s_scale["strength_defence_away"]),
-        normalization(f.opponent_strength_defence_home, s_scale["strength_defence_home"]),
-        normalization(f.opponent_strength_overall_away, s_scale["strength_overall_away"]),
-        normalization(f.opponent_strength_overall_home, s_scale["strength_overall_home"]),
-        normalization(f.team_strength_attack_away, s_scale["strength_attack_away"]),
-        normalization(f.team_strength_attack_home, s_scale["strength_attack_home"]),
-        normalization(f.team_strength_defence_away, s_scale["strength_defence_away"]),
-        normalization(f.team_strength_defence_home, s_scale["strength_defence_home"]),
-        normalization(f.team_strength_overall_away, s_scale["strength_overall_away"]),
-        normalization(f.team_strength_overall_home, s_scale["strength_overall_home"]),
+        (f.at_home - 0.5) / 0.5,
+        normalization(
+            f.points,
+            p_scale,
+        ),
+        normalization(
+            f.opponent_strength_attack_away,
+            s_scale["strength_attack_away"],
+        ),
+        normalization(
+            f.opponent_strength_attack_home,
+            s_scale["strength_attack_home"],
+        ),
+        normalization(
+            f.opponent_strength_defence_away,
+            s_scale["strength_defence_away"],
+        ),
+        normalization(
+            f.opponent_strength_defence_home,
+            s_scale["strength_defence_home"],
+        ),
+        normalization(
+            f.opponent_strength_overall_away,
+            s_scale["strength_overall_away"],
+        ),
+        normalization(
+            f.opponent_strength_overall_home,
+            s_scale["strength_overall_home"],
+        ),
+        normalization(
+            f.team_strength_attack_away,
+            s_scale["strength_attack_away"],
+        ),
+        normalization(
+            f.team_strength_attack_home,
+            s_scale["strength_attack_home"],
+        ),
+        normalization(
+            f.team_strength_defence_away,
+            s_scale["strength_defence_away"],
+        ),
+        normalization(
+            f.team_strength_defence_home,
+            s_scale["strength_defence_home"],
+        ),
+        normalization(
+            f.team_strength_overall_away,
+            s_scale["strength_overall_away"],
+        ),
+        normalization(
+            f.team_strength_overall_home,
+            s_scale["strength_overall_home"],
+        ),
     )
 
 
@@ -174,13 +213,15 @@ def xP(
     upcoming = [f for f in player.fixutres if f.upcoming]
 
     model = load(player)
+    model.eval()
     with torch.no_grad():
         for _next in upcoming[:lookahead]:
             if debug:
                 for i in inference:
                     print(i)
-            points = round(model(torch.Tensor((inference,))).detach().numpy()[0], 2)
-            expected.append(points)
+            points = model(torch.Tensor((inference,))).detach().numpy()
+            assert points.shape == (1,), print(points.shape)
+            expected.append(points[0])
             inference.pop(0)
             inference.append(
                 features(

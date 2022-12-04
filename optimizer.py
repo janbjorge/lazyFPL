@@ -19,7 +19,10 @@ def lineup(
     include: T.Sequence["structures.Player"] = tuple(),
     n_squads: int = 1_000,
     init_squad_xp: float = 0.0,
+    alpha: float = 0.95,
 ) -> T.Sequence[T.Sequence["structures.Player"]]:
+
+    assert 0 < alpha <= 1
 
     gkp_combinations = sorted(
         (
@@ -190,17 +193,19 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    parser.add_argument("--alpha", type=float, default=0.95)
     parser.add_argument("--budget-lower", type=int, default=900)
     parser.add_argument("--budget-upper", type=int, default=1_000)
+    parser.add_argument("--gkp-def-not-same-team", action="store_true")
     parser.add_argument("--include", nargs="+", default=[])
+    parser.add_argument("--init-squad-xp", type=float, default=0.0)
+    parser.add_argument("--keep-squad", type=int, default=100)
+    parser.add_argument("--max-def-per-team", type=int, default=3)
     parser.add_argument("--min-mtm", type=float, default=0.0)
     parser.add_argument("--min-xp", type=float, default=0.0)
+    parser.add_argument("--no-news", action="store_true")
     parser.add_argument("--remove", nargs="+", default=[])
     parser.add_argument("--top-position-price", type=int, default=0)
-    parser.add_argument("--gkp-def-not-same-team", action="store_true")
-    parser.add_argument("--max-def-per-team", type=int, default=3)
-    parser.add_argument("--no-news", action="store_true")
-    parser.add_argument("--init-squad-xp", type=float, default=0.0)
 
     args = parser.parse_args()
 
@@ -240,8 +245,8 @@ def main():
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
         include=include,
-        n_squads=250,
-        init_squad_xp=args.init_squad_xp,
+        n_squads=args.keep_squad,
+        alpha=args.alpha,
     )
 
     if args.gkp_def_not_same_team:
