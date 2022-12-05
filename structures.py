@@ -75,9 +75,9 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
-    fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
+    fixutres: list[Fixture] = dataclasses.field(compare=False)
     name: str = dataclasses.field(compare=True)
-    news: str = dataclasses.field(compare=False)
+    news: str = dataclasses.field(compare=True)
     position: T.Literal["GKP", "DEF", "MID", "FWD"] = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)

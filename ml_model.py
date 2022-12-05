@@ -234,7 +234,7 @@ def xP(
     if debug:
         print(player.name, player.team, expected)
 
-    return sum(expected)
+    return round(sum(expected), 2)
 
 
 def main():

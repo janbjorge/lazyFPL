@@ -2,6 +2,7 @@ import argparse
 import collections as C
 import heapq
 import itertools
+import statistics
 import typing as T
 
 from tqdm import tqdm
@@ -18,11 +19,8 @@ def lineup(
     budget_upper: int = 1_000,
     include: T.Sequence["structures.Player"] = tuple(),
     n_squads: int = 1_000,
-    init_squad_xp: float = 0.0,
-    alpha: float = 0.95,
+    max_players_per_team: int = 3,
 ) -> T.Sequence[T.Sequence["structures.Player"]]:
-
-    assert 0 < alpha <= 1
 
     gkp_combinations = sorted(
         (
@@ -30,6 +28,7 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "GKP"), 2)
         ),
         key=lambda x: x[1],
+        reverse=True,
     )
     if include_gkps := [p for p in include if p.position == "GKP"]:
         gkp_combinations = [
@@ -43,6 +42,7 @@ def lineup(
             if constraints.team_constraint(c, 3)
         ),
         key=lambda x: x[1],
+        reverse=True,
     )
     if include_defs := [p for p in include if p.position == "DEF"]:
         def_combinations = [
@@ -56,6 +56,7 @@ def lineup(
             if constraints.team_constraint(c, 3)
         ),
         key=lambda x: x[1],
+        reverse=True,
     )
     if include_mids := [p for p in include if p.position == "MID"]:
         mid_combinations = [
@@ -68,13 +69,14 @@ def lineup(
             for c in itertools.combinations((p for p in pool if p.position == "FWD"), 3)
         ),
         key=lambda x: x[1],
+        reverse=True,
     )
     if include_fwds := [p for p in include if p.position == "FWD"]:
         fwd_combinations = [
             c for c in fwd_combinations if all(i in c[-1] for i in include_fwds)
         ]
 
-    # All combinations are sorted from low -> higest price.
+    # All combinations sorted from higest -> lowest xP.
 
     total = (
         len(gkp_combinations)
@@ -92,15 +94,18 @@ def lineup(
     if not total:
         return []
 
-    best_squads = list[tuple[tuple[float, int, str], tuple[structures.Player, ...]]]()
-    best_squad_xp = init_squad_xp
+    best_squads = list[tuple[tuple[float, int], tuple[structures.Player, ...]]]()
+    best_squad_xp = 0.0
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
     max_mid_xp = max(xp for _, xp, _ in mid_combinations)
 
+    max_def_price = max(price for price, _, _ in def_combinations)
     min_def_price = min(price for price, _, _ in def_combinations)
     max_def_xp = max(xp for _, xp, _ in def_combinations)
+
+    alpha = 1.1
 
     with tqdm(
         total=total,
@@ -117,13 +122,19 @@ def lineup(
                 if gxp + fxp + max_def_xp + max_mid_xp < best_squad_xp:
                     continue
 
-                if max(C.Counter(p.team for p in g + f).values()) > 3:
-                    continue
-
                 if gp + fp + min_def_price + min_mid_price > budget_upper:
                     continue
 
-                for dp, dxp, d in def_combinations:
+                if gp + fp + max_def_price + max_mid_price < budget_upper:
+                    continue
+
+                if (
+                    max(C.Counter(p.team for p in g + f).values())
+                    > max_players_per_team
+                ):
+                    continue
+
+                for i, (dp, dxp, d) in enumerate(def_combinations, start=1):
 
                     if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
                         break
@@ -134,7 +145,10 @@ def lineup(
                     if gp + fp + dp + max_mid_price < budget_lower:
                         continue
 
-                    if max(C.Counter(p.team for p in g + f + d).values()) > 3:
+                    if (
+                        max(C.Counter(p.team for p in g + f + d).values())
+                        > max_players_per_team
+                    ):
                         continue
 
                     for mp, mxp, m in mid_combinations:
@@ -144,29 +158,25 @@ def lineup(
 
                         if (
                             budget_lower <= (cost := mp + dp + fp + gp) <= budget_upper
-                            and constraints.team_constraint(squad := g + f + d + m, n=3)
+                            and constraints.team_constraint(
+                                squad := g + f + d + m, n=max_players_per_team
+                            )
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
-                            player_names = " - ".join(p.name for p in squad)
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
-                                    best_squads,
-                                    ((oxp, budget_upper - cost, player_names), squad),
+                                    best_squads, ((oxp, budget_upper - cost), squad)
+                                )
+                                best_squad_xp = (
+                                    statistics.mean(v for (v, *_), _ in best_squads)
+                                    * alpha
                                 )
                             else:
                                 heapq.heappush(
-                                    best_squads,
-                                    ((oxp, budget_upper - cost, player_names), squad),
+                                    best_squads, ((oxp, budget_upper - cost), squad)
                                 )
-                            best_squad_xp = max(
-                                max(v for (v, *_), _ in best_squads) * 0.99,
-                                init_squad_xp,
-                            )
 
-    return sorted(
-        [s for _, s in best_squads],
-        key=helpers.overall_xP,
-    )
+    return sorted((s for _, s in best_squads), key=helpers.overall_xP)
 
 
 def position_price_candidates(
@@ -193,19 +203,70 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("--alpha", type=float, default=0.95)
-    parser.add_argument("--budget-lower", type=int, default=900)
-    parser.add_argument("--budget-upper", type=int, default=1_000)
-    parser.add_argument("--gkp-def-not-same-team", action="store_true")
-    parser.add_argument("--include", nargs="+", default=[])
-    parser.add_argument("--init-squad-xp", type=float, default=0.0)
-    parser.add_argument("--keep-squad", type=int, default=100)
-    parser.add_argument("--max-def-per-team", type=int, default=3)
-    parser.add_argument("--min-mtm", type=float, default=0.0)
-    parser.add_argument("--min-xp", type=float, default=0.0)
-    parser.add_argument("--no-news", action="store_true")
-    parser.add_argument("--remove", nargs="+", default=[])
-    parser.add_argument("--top-position-price", type=int, default=0)
+    parser.add_argument(
+        "--budget-lower",
+        type=int,
+        default=900,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--budget-upper",
+        type=int,
+        default=1_000,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--gkp-def-not-same-team",
+        action="store_true",
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--include",
+        nargs="+",
+        default=[],
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--keep-squad",
+        type=int,
+        default=100,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--max-def-per-team",
+        type=int,
+        default=3,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-mtm",
+        type=float,
+        default=0.0,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-xp",
+        type=float,
+        default=0.0,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-news",
+        action="store_true",
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--remove",
+        nargs="+",
+        default=[],
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--top-position-price",
+        type=int,
+        default=0,
+        help="(default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
@@ -246,7 +307,6 @@ def main():
         budget_upper=args.budget_upper,
         include=include,
         n_squads=args.keep_squad,
-        alpha=args.alpha,
     )
 
     if args.gkp_def_not_same_team:
