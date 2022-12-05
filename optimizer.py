@@ -134,7 +134,7 @@ def lineup(
                 ):
                     continue
 
-                for i, (dp, dxp, d) in enumerate(def_combinations, start=1):
+                for dp, dxp, d in def_combinations:
 
                     if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
                         break
