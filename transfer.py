@@ -2,7 +2,7 @@ import argparse
 import itertools
 import typing as T
 
-from tqdm import tqdm
+from tqdm.std import tqdm
 
 import constraints
 import fetch
@@ -26,12 +26,12 @@ def display(
 
     log.write("-" * 75)
     for o, i in zip(transfers_out, transfers_in):
-        tqdm.write(
+        log.write(
             f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.2f}"
             "  -->>  "
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
-    tqdm.write(f"lxp gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.2f}")
+    log.write(f"lxp gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.2f}")
 
 
 def transfer(

@@ -9,7 +9,7 @@ import pydantic
 import pytz
 import requests
 from dateutil.parser import parse as dtparser
-from tqdm import tqdm
+from tqdm.std import tqdm
 
 import database
 import helpers

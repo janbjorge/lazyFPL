@@ -5,7 +5,7 @@ import itertools
 import statistics
 import typing as T
 
-from tqdm import tqdm
+from tqdm.std import tqdm
 
 import constraints
 import fetch

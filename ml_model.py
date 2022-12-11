@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.data import Dataset as TorchDataset
-from tqdm import tqdm
+from tqdm.std import tqdm
 
 import database
 import fetch
