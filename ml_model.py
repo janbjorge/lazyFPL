@@ -2,6 +2,7 @@ import argparse
 import dataclasses
 import pickle
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.data import Dataset as TorchDataset
@@ -219,9 +220,13 @@ def xP(
             if debug:
                 for i in inference:
                     print(i)
-            points = model(torch.Tensor((inference,))).detach().numpy()
+            inf = np.expand_dims(
+                np.stack(inference, axis=0).astype(np.float32),
+                axis=0,
+            )
+            points = model(torch.from_numpy(inf)).detach().numpy()
             assert points.shape == (1,), print(points.shape)
-            expected.append(points[0])
+            expected.extend(points)
             inference.pop(0)
             inference.append(
                 features(

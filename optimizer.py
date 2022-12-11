@@ -13,6 +13,32 @@ import helpers
 import structures
 
 
+def position_combinations(
+    pool: T.Sequence["structures.Player"],
+    combinations: int,
+) -> list[tuple[int, float, tuple["structures.Player", ...]]]:
+    assert combinations > 0
+    return sorted(
+        (
+            (helpers.squad_price(c), helpers.squad_xP(c), c)
+            for c in itertools.combinations(pool, combinations)
+        ),
+        key=lambda x: (x[1], x[0]),
+        reverse=True,
+    )
+
+
+def must_include(
+    combinations: list[tuple[int, float, tuple["structures.Player", ...]]],
+    include: T.Sequence["structures.Player"],
+) -> list[tuple[int, float, tuple["structures.Player", ...]]]:
+    return (
+        [c for c in combinations if all(i in c[-1] for i in include)]
+        if include
+        else combinations
+    )
+
+
 def lineup(
     pool: T.Sequence["structures.Player"],
     budget_lower: int = 900,
@@ -22,59 +48,37 @@ def lineup(
     max_players_per_team: int = 3,
 ) -> T.Sequence[T.Sequence["structures.Player"]]:
 
-    gkp_combinations = sorted(
-        (
-            (helpers.squad_price(c), helpers.squad_xP(c), c)
-            for c in itertools.combinations((p for p in pool if p.position == "GKP"), 2)
+    gkp_combinations = must_include(
+        position_combinations(
+            pool=[p for p in pool if p.position == "GKP"],
+            combinations=2,
         ),
-        key=lambda x: x[1],
-        reverse=True,
+        [p for p in include if p.position == "GKP"],
     )
-    if include_gkps := [p for p in include if p.position == "GKP"]:
-        gkp_combinations = [
-            c for c in gkp_combinations if all(i in c[-1] for i in include_gkps)
-        ]
 
-    def_combinations = sorted(
-        (
-            (helpers.squad_price(c), helpers.squad_xP(c), c)
-            for c in itertools.combinations((p for p in pool if p.position == "DEF"), 5)
-            if constraints.team_constraint(c, 3)
+    def_combinations = must_include(
+        position_combinations(
+            pool=[p for p in pool if p.position == "DEF"],
+            combinations=5,
         ),
-        key=lambda x: x[1],
-        reverse=True,
+        [p for p in include if p.position == "DEF"],
     )
-    if include_defs := [p for p in include if p.position == "DEF"]:
-        def_combinations = [
-            c for c in def_combinations if all(i in c[-1] for i in include_defs)
-        ]
 
-    mid_combinations = sorted(
-        (
-            (helpers.squad_price(c), helpers.squad_xP(c), c)
-            for c in itertools.combinations((p for p in pool if p.position == "MID"), 5)
-            if constraints.team_constraint(c, 3)
+    mid_combinations = must_include(
+        position_combinations(
+            pool=[p for p in pool if p.position == "MID"],
+            combinations=5,
         ),
-        key=lambda x: x[1],
-        reverse=True,
+        [p for p in include if p.position == "MID"],
     )
-    if include_mids := [p for p in include if p.position == "MID"]:
-        mid_combinations = [
-            c for c in mid_combinations if all(i in c[-1] for i in include_mids)
-        ]
 
-    fwd_combinations = sorted(
-        (
-            (helpers.squad_price(c), helpers.squad_xP(c), c)
-            for c in itertools.combinations((p for p in pool if p.position == "FWD"), 3)
+    fwd_combinations = must_include(
+        position_combinations(
+            pool=[p for p in pool if p.position == "FWD"],
+            combinations=3,
         ),
-        key=lambda x: x[1],
-        reverse=True,
+        [p for p in include if p.position == "FWD"],
     )
-    if include_fwds := [p for p in include if p.position == "FWD"]:
-        fwd_combinations = [
-            c for c in fwd_combinations if all(i in c[-1] for i in include_fwds)
-        ]
 
     # All combinations sorted from higest -> lowest xP.
 

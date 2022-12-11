@@ -16,7 +16,7 @@ class Difficulty:
 
     @property
     def combined(self):
-        return (self.attack**2 + self.defence**2 + self.overall**2) ** (1 / 2)
+        return (self.attack ** 2 + self.defence ** 2 + self.overall ** 2) ** (1 / 2)
 
 
 @dataclasses.dataclass(frozen=True)
