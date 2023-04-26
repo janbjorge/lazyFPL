@@ -5,8 +5,7 @@ import structures
 
 
 def team_constraint(lineup: T.Sequence["structures.Player"], n: int) -> bool:
-    count = C.Counter(p.team for p in lineup)
-    return max(count.values()) <= n
+    return max(C.Counter(p.team for p in lineup).values()) <= n
 
 
 def gkp_def_same_team(

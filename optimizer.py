@@ -110,6 +110,7 @@ def lineup(
     max_def_xp = max(xp for _, xp, _ in def_combinations)
 
     alpha = 1.1
+    sequence: int = 0
 
     with tqdm(
         total=total,
@@ -161,15 +162,16 @@ def lineup(
                             break
 
                         if (
-                            budget_lower <= (cost := mp + dp + fp + gp) <= budget_upper
+                            budget_lower <= mp + dp + fp + gp <= budget_upper
                             and constraints.team_constraint(
                                 squad := g + f + d + m, n=max_players_per_team
                             )
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
+                            sequence += 1
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
-                                    best_squads, ((oxp, budget_upper - cost), squad)
+                                    best_squads, ((oxp, sequence), squad)
                                 )
                                 best_squad_xp = (
                                     statistics.mean(v for (v, *_), _ in best_squads)
@@ -177,7 +179,7 @@ def lineup(
                                 )
                             else:
                                 heapq.heappush(
-                                    best_squads, ((oxp, budget_upper - cost), squad)
+                                    best_squads, ((oxp, sequence), squad)
                                 )
 
     return sorted((s for _, s in best_squads), key=helpers.overall_xP)

@@ -83,8 +83,7 @@ def lprint(
     best: T.Sequence[str] | None = None,
 ) -> None:
 
-    if not best:
-        best = []
+    best = best or []
 
     if not lineup:
         return
@@ -112,12 +111,12 @@ def lprint(
         players = list(_players)
         header(players, prefix=f"{pos}(", postfix=")")
         print(
-            "xP     Price  TP   UD       Team            Position  Player"
+            "BIS  xP     Price  TP   UD       Team            Position  Player"
             + " " * 15
             + "News"
         )
         for player in players:
-            print(player)
+            print(("X    " if player.name in best else "     ") + str(player))
 
 
 def header(
