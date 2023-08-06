@@ -110,7 +110,7 @@ def main() -> None:
     pool = [
         p
         for p in fetch.players()
-        if p.xP >= args.min_xp and p.mtm >= args.min_mtm and not p.news
+        if p.xP >= args.min_xp and p.mtm() >= args.min_mtm and not p.news
     ]
     pool = sorted(pool, key=lambda p: p.xP)
     pool = pool[-args.top :]

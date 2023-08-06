@@ -33,7 +33,7 @@ def squad_xP(lineup: T.Sequence["structures.Player"]) -> float:
 
 
 def overall_xP(lineup: T.Sequence["structures.Player"]) -> float:
-    return (squad_xP(lineup) + best_lineup_xP(lineup)) / 2.0
+    return (squad_xP(lineup) ** 2 + best_lineup_xP(lineup) ** 2) ** 0.5
 
 
 def best_lineup(

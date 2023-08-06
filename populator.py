@@ -69,6 +69,10 @@ def player_id_fuzzer(name: str) -> int:
 def past_team_lists() -> dict[str, list["structures.Team"]]:
     urls = (
         (
+            "2023-24",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
+        ),
+        (
             "2022-23",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
         ),
@@ -98,6 +102,10 @@ def past_team_lookup(tid: int, session: str) -> str:
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     urls = (
+        # (
+        #     "2023-24",
+        #     ""
+        # ),
         (
             "2022-23",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
@@ -200,7 +208,9 @@ def populate_teams() -> None:
             )
 
 
-def populate_players(session: T.Literal["2022-23"] = "2022-23") -> None:
+def populate_players(
+    session: database.SESSIONS = T.get_args(database.SESSIONS)[-1],
+) -> None:
     sql = """
         INSERT INTO player(
             webname,
@@ -233,7 +243,7 @@ def populate_players(session: T.Literal["2022-23"] = "2022-23") -> None:
         )
 
 
-def populate_games(current_session="2022-23") -> None:
+def populate_games() -> None:
     game_sql = """
         INSERT INTO game (
             session,
@@ -338,6 +348,7 @@ def populate_games(current_session="2022-23") -> None:
                 if helpers.debug():
                     print(str(e))
                     pprint.pp(game)
+                continue
 
             # A past game, data allready logged.
             if upcoming.event in upcoming_games:
@@ -348,7 +359,7 @@ def populate_games(current_session="2022-23") -> None:
                 database.execute(
                     game_sql,
                     (
-                        current_session,
+                        database.CURRENT_SESSION,
                         True,
                         is_home,
                         upcoming.kickoff_time,
@@ -356,9 +367,9 @@ def populate_games(current_session="2022-23") -> None:
                         None,
                         upcoming_position(fullname),
                         player_id_fuzzer(fullname),
-                        current_session,
+                        database.CURRENT_SESSION,
                         team,
-                        current_session,
+                        database.CURRENT_SESSION,
                         opponent,
                     ),
                 )
@@ -373,7 +384,7 @@ def upcoming_team_id_to_name(id: int) -> str:
 
 
 @functools.cache
-def upcoming_position(name: str) -> T.Literal["GKP", "DEF", "MID", "FWD"]:
+def upcoming_position(name: str) -> database.POSITIONS:
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:
             element_type = bootstrap()["element_types"][element["element_type"] - 1]

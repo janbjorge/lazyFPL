@@ -10,6 +10,10 @@ import typing as T
 
 import pydantic
 
+SESSIONS = T.Literal["2021-22", "2022-23", "2023-24"]
+CURRENT_SESSION = T.get_args(SESSIONS)[-1]
+POSITIONS = T.Literal["GKP", "DEF", "MID", "FWD"]
+
 
 @dataclasses.dataclass(frozen=True)
 class SampleSummay:
@@ -26,8 +30,8 @@ class Game(pydantic.BaseModel):
     player_id: int
     player: str
     points: T.Optional[int]
-    position: T.Literal["GKP", "DEF", "MID", "FWD"]
-    session: T.Literal["2021-22", "2022-23"]
+    position: POSITIONS
+    session: SESSIONS
     team: str
     upcoming: bool
     webname: str
@@ -52,7 +56,7 @@ def dbfile(
 
 
 @functools.cache
-def connect(file: pathlib.Path = dbfile()):
+def connect(file: pathlib.Path = dbfile()) -> sqlite3.Connection:
     return sqlite3.connect(file)
 
 

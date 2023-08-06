@@ -6,6 +6,7 @@ import typing as T
 import pydantic
 
 import helpers
+import database
 
 
 @dataclasses.dataclass(frozen=True)
@@ -27,7 +28,7 @@ class Fixture:
     opponent: str
     player: str
     points: T.Optional[int]
-    session: T.Literal["2021-22", "2022-23"]
+    session: database.SESSIONS
     team: str
     upcoming: bool
     webname: str
@@ -78,23 +79,27 @@ class Player:
     fixutres: list[Fixture] = dataclasses.field(compare=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=True)
-    position: T.Literal["GKP", "DEF", "MID", "FWD"] = dataclasses.field(compare=False)
+    position: database.POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
     xP: float = 0.0
 
-    @property
-    def tp(self) -> int:
-        return sum(
-            f.points for f in self.fixutres if f.points and f.session == "2022-23"
-        )
+    def tp(self, session: database.SESSIONS = database.CURRENT_SESSION) -> int:
+        return sum(f.points or 0 for f in self.fixutres if f.session == session)
 
-    @property
-    def mtm(self) -> float:
+    def mtm(self, last: int = 5) -> float:
+        # fixutre.minutes is None if the gameweek is not started
+        # need to filter out fixutres with minutes as none.
         try:
             return statistics.mean(
-                f.minutes for f in self.fixutres if f.session == "2022-23" and f.minutes
+                (
+                    f.minutes or 0
+                    for f in sorted(
+                        (f for f in self.fixutres if f.minutes is not None),
+                        key=lambda x: x.kickoff_time,
+                    )[-last:]
+                )
             )
         except statistics.StatisticsError:
             return 0.0
@@ -111,16 +116,25 @@ class Player:
 
     def __str__(self):
         return (
-            f"{self.xP:<6.2f} {self.price:<6.1f} {self.tp:<4} "
+            f"{self.xP:<6.2f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{self.news}"
         )
 
 
+@dataclasses.dataclass
+class Squad:
+    players: T.Sequence[Player]
+    price: int = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        self.price = sum(p.price for p in self.players)
+
+
 class HistoricGame(pydantic.BaseModel):
     name: str
-    position: T.Literal["GK", "DEF", "MID", "FWD", "GKP"]
+    position: database.POSITIONS
     team: str
     xP: float
     assists: int

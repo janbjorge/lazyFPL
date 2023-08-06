@@ -269,7 +269,7 @@ def main():
 
     args = parser.parse_args()
 
-    players = [p for p in fetch.players() if p.mtm >= args.min_mtm]
+    players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
 
     with tqdm(
         ascii=True,
