@@ -7,7 +7,6 @@ import typing
 
 
 def make_key(obj: typing.Any) -> str:
-
     if isinstance(obj, list):
         return make_key("".join(make_key(v) for v in obj))
 
@@ -21,7 +20,6 @@ def make_key(obj: typing.Any) -> str:
 
 
 def fcache(fn):
-
     default_args_hsh = make_key(
         {
             k: v.default
@@ -34,7 +32,6 @@ def fcache(fn):
 
     @functools.cache
     def inner(*args, **kw):
-
         key = make_key(
             "".join(
                 (

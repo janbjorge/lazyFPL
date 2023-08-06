@@ -1,10 +1,11 @@
 import functools
 import itertools
 import os
-import typing as T
+import traceback
 
 import requests
 
+import conf
 import database
 import helpers
 import ml_model
@@ -28,7 +29,6 @@ def player_name(pid: int) -> str:
 
 @functools.cache
 def players() -> list["structures.Player"]:
-
     pool = list[structures.Player]()
 
     for (name, webname), _games in itertools.groupby(
@@ -67,7 +67,7 @@ def players() -> list["structures.Player"]:
         try:
             team = [g for g in games if g.upcoming][-1].team
         except IndexError as e:
-            if helpers.debug():
+            if conf.env.debug:
                 print(e)
             continue
 
@@ -83,11 +83,18 @@ def players() -> list["structures.Player"]:
             )
         )
 
+    remove = set[structures.Player]()
     for p in pool:
         try:
             p.xP = ml_model.xP(p)
-        except ValueError:
-            p.xP = 0
+        except ValueError as e:
+            if conf.env.debug:
+                traceback.print_exc()
+            remove.add(p)
+
+    for r in remove:
+        while r in pool:
+            pool.remove(r)
 
     return pool
 
@@ -97,7 +104,8 @@ def picks(team_id: str) -> dict:
     gmw = 1
     prev = None
     while req := requests.get(
-        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{gmw}/picks/"
+        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{gmw}/picks/",
+        timeout=10,
     ):
         gmw += 1
         prev = req
@@ -108,11 +116,11 @@ def picks(team_id: str) -> dict:
 @functools.cache
 def my_team(
     team_id: str = os.environ.get("FPL_TEAMID", ""),
-) -> T.Sequence[structures.Player]:
+) -> structures.Squad:
     assert team_id
     names = set(player_name(pick["element"]) for pick in picks(team_id))
-    return [p for p in players() if p.name in names]
+    return structures.Squad([p for p in players() if p.name in names])
 
 
 if __name__ == "__main__":
-    helpers.lprint(players())
+    print(structures.Squad(players()))

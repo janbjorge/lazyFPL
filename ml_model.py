@@ -8,13 +8,13 @@ from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.data import Dataset as TorchDataset
 from tqdm.std import tqdm
 
+import conf
 import database
 import fetch
-import helpers
 import populator
 import structures
 
-if helpers.debug():
+if conf.env.debug:
     torch.set_printoptions(threshold=10_000)
 
 
@@ -133,7 +133,6 @@ def samples(
     fixtures: list["structures.Fixture"],
     backtrace: int = 3,
 ) -> tuple[list[tuple[tuple[float, ...], ...]], list[float]]:
-
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
     back = (backtrace + 2) ** 2
@@ -159,7 +158,6 @@ def train(
     epochs: int = 50,
     lr: float = 1e-2,
 ):
-
     ds = SequenceDataset(player.fixutres)
     loader = TorchDataLoader(ds, batch_size=8, shuffle=True)
 
@@ -204,11 +202,10 @@ def save(player: "structures.Player", m: "Net") -> None:
 
 def xP(
     player: "structures.Player",
-    lookahead: int = helpers.lookahead(),
-    backtrace: int = helpers.backtrace(),
+    lookahead: int = conf.env.lookahead,
+    backtrace: int = conf.env.backtrace,
 ) -> float:
-
-    debug = helpers.debug()
+    debug = conf.env.debug
     expected = list[float]()
     inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
     upcoming = [f for f in player.fixutres if f.upcoming]

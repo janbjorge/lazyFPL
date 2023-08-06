@@ -11,8 +11,8 @@ import requests
 from dateutil.parser import parse as dtparser
 from tqdm.std import tqdm
 
+import conf
 import database
-import helpers
 import structures
 
 
@@ -273,14 +273,13 @@ def populate_games() -> None:
             unit_divisor=1_000,
             unit_scale=True,
         ):
-
             # Dafuq pydantic?!
             game.pop(None, None)
 
             try:
                 historic = structures.HistoricGame.parse_obj(game)
             except pydantic.ValidationError as e:
-                if helpers.debug():
+                if conf.env.debug:
                     pprint.pp(game)
                     print(str(e))
                 continue
@@ -288,7 +287,7 @@ def populate_games() -> None:
             try:
                 pid = player_id_fuzzer(historic.name)
             except KeyError as e:
-                if helpers.debug():
+                if conf.env.debug:
                     print(e)
                 continue
 
@@ -312,7 +311,7 @@ def populate_games() -> None:
                 )
             except database.sqlite3.IntegrityError as e:
                 # The player does not play this year.
-                if helpers.debug():
+                if conf.env.debug:
                     print(e)
                 continue
 
@@ -341,11 +340,10 @@ def populate_games() -> None:
         fullname = f'{ele["first_name"]} {ele["second_name"]}'
         team = upcoming_team_id_to_name(ele["team"])
         for game in summary(ele["id"])["fixtures"]:
-
             try:
                 upcoming = structures.UpcommingGame.parse_obj(game)
             except pydantic.ValidationError as e:
-                if helpers.debug():
+                if conf.env.debug:
                     print(str(e))
                     pprint.pp(game)
                 continue

@@ -2,7 +2,6 @@ import argparse
 import collections as C
 import heapq
 import itertools
-import statistics
 import typing as T
 
 from tqdm.std import tqdm
@@ -14,7 +13,7 @@ import structures
 
 
 def position_combinations(
-    pool: T.Sequence["structures.Player"],
+    pool: list["structures.Player"],
     combinations: int,
 ) -> list[tuple[int, float, tuple["structures.Player", ...]]]:
     assert combinations > 0
@@ -23,14 +22,14 @@ def position_combinations(
             (helpers.squad_price(c), helpers.squad_xP(c), c)
             for c in itertools.combinations(pool, combinations)
         ),
-        key=lambda x: (x[1], x[0]),
+        key=lambda x: (x[0], x[1]),
         reverse=True,
     )
 
 
 def must_include(
     combinations: list[tuple[int, float, tuple["structures.Player", ...]]],
-    include: T.Sequence["structures.Player"],
+    include: list["structures.Player"],
 ) -> list[tuple[int, float, tuple["structures.Player", ...]]]:
     return (
         [c for c in combinations if all(i in c[-1] for i in include)]
@@ -40,13 +39,15 @@ def must_include(
 
 
 def lineup(
-    pool: T.Sequence["structures.Player"],
+    pool: list["structures.Player"],
     budget_lower: int = 900,
     budget_upper: int = 1_000,
     include: T.Sequence["structures.Player"] = tuple(),
     n_squads: int = 1_000,
     max_players_per_team: int = 3,
-) -> T.Sequence[T.Sequence["structures.Player"]]:
+    alpha: float = 0.8,
+) -> list[structures.Squad]:
+    assert 0 <= alpha <= 1.0
 
     gkp_combinations = must_include(
         position_combinations(
@@ -98,7 +99,7 @@ def lineup(
     if not total:
         return []
 
-    best_squads = list[tuple[tuple[float, int], tuple[structures.Player, ...]]]()
+    best_squads = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()
     best_squad_xp = 0.0
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
@@ -109,7 +110,6 @@ def lineup(
     min_def_price = min(price for price, _, _ in def_combinations)
     max_def_xp = max(xp for _, xp, _ in def_combinations)
 
-    alpha = 1.1
     sequence: int = 0
 
     with tqdm(
@@ -119,7 +119,6 @@ def lineup(
         unit_divisor=1_000,
         ascii=True,
     ) as bar:
-
         for gp, gxp, g in gkp_combinations:
             for fp, fxp, f in fwd_combinations:
                 bar.update(len(def_combinations) * len(mid_combinations))
@@ -140,7 +139,6 @@ def lineup(
                     continue
 
                 for dp, dxp, d in def_combinations:
-
                     if gxp + fxp + dxp + max_mid_xp < best_squad_xp:
                         break
 
@@ -157,7 +155,6 @@ def lineup(
                         continue
 
                     for mp, mxp, m in mid_combinations:
-
                         if gxp + fxp + dxp + mxp < best_squad_xp:
                             break
 
@@ -169,38 +166,41 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
                             sequence += 1
+                            ss = 1 / (helpers.sscore(squad) + 1)
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
-                                    best_squads, ((oxp, sequence), squad)
+                                    best_squads, ((ss, oxp, sequence), squad)
                                 )
                                 best_squad_xp = (
-                                    statistics.mean(v for (v, *_), _ in best_squads)
-                                    * alpha
+                                    max(v for (_, v, _), _ in best_squads) * alpha
                                 )
                             else:
                                 heapq.heappush(
-                                    best_squads, ((oxp, sequence), squad)
+                                    best_squads, ((ss, oxp, sequence), squad)
                                 )
 
-    return sorted((s for _, s in best_squads), key=helpers.overall_xP)
+    return sorted(
+        (structures.Squad(s) for (ss, oxp, _), s in best_squads),
+        key=lambda x: (1 / (x.sscore() + 1), x.CxP()),
+    )
 
 
 def position_price_candidates(
-    pool: T.Sequence["structures.Player"],
-    topn: int = 5,
-) -> T.Sequence["structures.Player"]:
-
-    new: list[structures.Player] = []
-
+    pool: list["structures.Player"],
+    topn: int,
+) -> T.Iterator["structures.Player"]:
     for _, players in itertools.groupby(
         sorted(pool, key=lambda x: (x.position, x.price)),
         key=lambda x: (x.position, x.price),
     ):
+        toadd = []
+        team = set[str]()
         candidates = sorted(list(players), key=lambda x: x.xP, reverse=True)
-        new.extend(candidates[:topn])
-
-    # Just in case.
-    return list(set(new))
+        for candiate in candidates:
+            if candiate.team not in team:
+                toadd.append(candiate)
+                team.add(candiate.team)
+        yield from toadd[:topn]
 
 
 def main():
@@ -276,7 +276,9 @@ def main():
 
     args = parser.parse_args()
 
-    pool = [p for p in fetch.players() if p.mtm >= args.min_mtm and p.xP >= args.min_xp]
+    pool = [
+        p for p in fetch.players() if p.mtm() >= args.min_mtm and p.xP >= args.min_xp
+    ]
 
     if args.no_news:
         pool = [p for p in pool if not p.news]
@@ -286,9 +288,11 @@ def main():
 
     if args.top_position_price:
         pool = list(
-            position_price_candidates(
-                pool=pool,
-                topn=args.top_position_price,
+            set(
+                position_price_candidates(
+                    pool=pool,
+                    topn=args.top_position_price,
+                )
             )
         )
 
@@ -306,7 +310,7 @@ def main():
     # Just in case
     pool = list(set(pool))
 
-    helpers.lprint(pool)
+    print(structures.Squad(pool))
     squads = lineup(
         pool=pool,
         budget_lower=args.budget_lower,
@@ -316,7 +320,7 @@ def main():
     )
 
     if args.gkp_def_not_same_team:
-        squads = [s for s in squads if constraints.gkp_def_same_team(s)]
+        squads = [s for s in squads if constraints.gkp_def_same_team(s.players)]
 
     if args.max_def_per_team:
         squads = [
@@ -326,13 +330,19 @@ def main():
             <= args.max_def_per_team
         ]
 
-    for squad in squads:
-        helpers.lprint(squad, best=[p.name for p in helpers.best_lineup(squad)])
-        print(
-            f"lxp: {helpers.best_lineup_xP(squad):.2f} "
-            + f"gxp: {helpers.squad_xP(squad):.2f} "
-            + f"oxp: {helpers.overall_xP(squad):.2f}\n"
-        )
+    print("\n\n".join(str(s) for s in squads[-10:]))
+
+    # print(
+    #     min(s.oxP for s in squads),
+    #     max(s.oxP for s in squads),
+    #     max(s.oxP for s in squads) - min(s.oxP for s in squads),
+    # )
+
+    # print(
+    #     min(s.sscore for s in squads),
+    #     max(s.sscore for s in squads),
+    #     max(s.sscore for s in squads) - min(s.sscore for s in squads),
+    # )
 
 
 if __name__ == "__main__":

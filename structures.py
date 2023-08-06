@@ -1,11 +1,13 @@
+import collections
 import dataclasses
 import datetime
+import itertools
 import statistics
 import typing as T
 
 import pydantic
 
-import helpers
+import conf
 import database
 
 
@@ -105,14 +107,24 @@ class Player:
             return 0.0
 
     def upcoming_difficulty(self) -> float:
-        upcoming = [f for f in self.fixutres if f.upcoming][: helpers.lookahead()]
+        upcoming = [f for f in self.fixutres if f.upcoming][: conf.env.lookahead]
         return sum(f.relative.combined for f in upcoming)
 
     @property
     def next_opponent(self) -> str:
         return min(
-            [f for f in self.fixutres if f.upcoming], key=lambda f: f.kickoff_time
+            (f for f in self.fixutres if f.upcoming),
+            key=lambda f: f.kickoff_time,
         ).opponent
+
+    def upcoming_opponents(self) -> list[str]:
+        return [
+            x.opponent
+            for x in sorted(
+                (f for f in self.fixutres if f.upcoming),
+                key=lambda f: f.kickoff_time,
+            )
+        ]
 
     def __str__(self):
         return (
@@ -123,13 +135,109 @@ class Player:
         )
 
 
-@dataclasses.dataclass
 class Squad:
-    players: T.Sequence[Player]
-    price: int = dataclasses.field(init=False)
+    def __init__(self, players: T.Sequence[Player]):
+        self.players = players
+        # self.bis = bis or helpers.best_lineup(self.players)
+        # self.oxP = oxP or helpers.overall_xP(self.players)
+        # self.sscore = sscore or helpers.sscore(self.players)
 
-    def __post_init__(self):
-        self.price = sum(p.price for p in self.players)
+    def price(self) -> int:
+        return sum(p.price for p in self.players)
+
+    def valid_squad(
+        self, gkps: int = 2, defs: int = 5, mids: int = 5, fwds: int = 3
+    ) -> bool:
+        cnt = collections.Counter(p.position for p in self.players)
+        return (
+            cnt["GKP"] == gkps
+            and cnt["DEF"] == defs
+            and cnt["MID"] == mids
+            and cnt["FWD"] == fwds
+        )
+
+    def best_lineup(
+        self,
+        min_gkp: int = 1,
+        min_def: int = 3,
+        min_mid: int = 2,
+        min_fwd: int = 1,
+        size: int = 11,
+    ) -> list[Player]:
+        team = sorted(self.players, key=lambda x: x.xP, reverse=True)
+        gkps = [p for p in team if p.position == "GKP"]
+        defs = [p for p in team if p.position == "DEF"]
+        mids = [p for p in team if p.position == "MID"]
+        fwds = [p for p in team if p.position == "FWD"]
+        best = gkps[:min_gkp] + defs[:min_def] + mids[:min_mid] + fwds[:min_fwd]
+        remainder = sorted(
+            defs[min_def:] + mids[min_mid:] + fwds[min_fwd:],
+            key=lambda x: x.xP,
+            reverse=True,
+        )
+        return best + remainder[: (size - len(best))]
+
+    def SxP(self) -> float:
+        # Squad xP
+        return sum(p.xP for p in self.players)
+
+    def LxP(self) -> float:
+        # Lineup xP
+        return sum(p.xP for p in self.best_lineup())
+
+    def CxP(self) -> float:
+        # Combined xP
+        return (self.SxP() ** 2 + self.LxP() ** 2) ** 0.5
+
+    def sscore(self, n: int = conf.env.lookahead) -> int:
+        # "sscore -> "schedule score"
+        # counts players in the lineup who plays in same match.
+        # Ex. l'pool vs. man. city, and you team has Haaland and Salah as the only
+        # players from the l'pool and city, the sscore is 2 since both play
+        # the same match (assuming they start/play ofc.)
+
+        per_gw = collections.defaultdict(list)
+        for player in self.players:
+            for i, nextopp in enumerate(player.upcoming_opponents()[:n]):
+                per_gw[i].append((player.team, nextopp))
+
+        score = 0
+        for vs in per_gw.values():
+            score += sum(vs.count(x[::-1]) for x in set(vs))
+        return score
+
+    def __iter__(self):
+        yield from self.players
+
+    def __len__(self) -> int:
+        return len(self.players)
+
+    def __str(self):
+        pospri = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
+        yield f"Price: {self.price()/10} Size: {len(self.players)}"
+        yield f"LxP: {self.LxP():.2f} SxP: {self.SxP():.2f} CxP: {self.CxP():.2f}"
+        yield f"Schedule score: {self.sscore()}"
+        for pos, players in itertools.groupby(
+            sorted(
+                self.players,
+                key=lambda x: (pospri.get(x.position), x.xP),
+                reverse=True,
+            ),
+            key=lambda x: x.position,
+        ):
+            yield f"\n{pos.upper()}"
+            yield (
+                "BIS  xP     Price  TP   UD       Team            Position  Player"
+                + " " * 15
+                + "News"
+            )
+            for player in players:
+                yield ("X    " if player in self.best_lineup() else "     ") + str(
+                    player
+                )
+
+    def __str__(self) -> str:
+        return "\n".join(self.__str())
 
 
 class HistoricGame(pydantic.BaseModel):
