@@ -1,5 +1,5 @@
 import argparse
-import collections as C
+import collections
 import heapq
 import itertools
 import typing as T
@@ -22,7 +22,7 @@ def position_combinations(
             (helpers.squad_price(c), helpers.squad_xP(c), c)
             for c in itertools.combinations(pool, combinations)
         ),
-        key=lambda x: (x[0], x[1]),
+        key=lambda x: (x[1], x[0]),
         reverse=True,
     )
 
@@ -100,7 +100,17 @@ def lineup(
         return []
 
     best_squads = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()
-    best_squad_xp = 0.0
+    best_squad_xp = (
+        sum(
+            (
+                helpers.squad_xP(fwd_combinations[0][-1]),
+                helpers.squad_xP(mid_combinations[0][-1]),
+                helpers.squad_xP(def_combinations[0][-1]),
+                helpers.squad_xP(gkp_combinations[0][-1]),
+            )
+        )
+        * alpha
+    )
 
     max_mid_price = max(price for price, _, _ in mid_combinations)
     min_mid_price = min(price for price, _, _ in mid_combinations)
@@ -124,16 +134,17 @@ def lineup(
                 bar.update(len(def_combinations) * len(mid_combinations))
 
                 if gxp + fxp + max_def_xp + max_mid_xp < best_squad_xp:
+                    # Could use break, but messes up tqdm.
                     continue
 
                 if gp + fp + min_def_price + min_mid_price > budget_upper:
                     continue
 
-                if gp + fp + max_def_price + max_mid_price < budget_upper:
+                if gp + fp + max_def_price + max_mid_price < budget_lower:
                     continue
 
                 if (
-                    max(C.Counter(p.team for p in g + f).values())
+                    max(collections.Counter(p.team for p in g + f).values())
                     > max_players_per_team
                 ):
                     continue
@@ -149,7 +160,7 @@ def lineup(
                         continue
 
                     if (
-                        max(C.Counter(p.team for p in g + f + d).values())
+                        max(collections.Counter(p.team for p in g + f + d).values())
                         > max_players_per_team
                     ):
                         continue
@@ -166,23 +177,39 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
                             sequence += 1
-                            ss = 1 / (helpers.sscore(squad) + 1)
+                            inv = 1 / (
+                                1
+                                + (
+                                    helpers.sscore(squad) ** 2
+                                    + helpers.tcnt(squad) ** 2
+                                )
+                                ** 0.5
+                            )
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
-                                    best_squads, ((ss, oxp, sequence), squad)
+                                    best_squads,
+                                    (
+                                        (inv, oxp, sequence),
+                                        squad,
+                                    ),
                                 )
-                                best_squad_xp = (
-                                    max(v for (_, v, _), _ in best_squads) * alpha
+                                best_squad_xp = max(
+                                    max(v for (_, v, _), _ in best_squads) * alpha,
+                                    best_squad_xp,
                                 )
                             else:
                                 heapq.heappush(
-                                    best_squads, ((ss, oxp, sequence), squad)
+                                    best_squads,
+                                    (
+                                        (inv, oxp, sequence),
+                                        squad,
+                                    ),
                                 )
 
-    return sorted(
-        (structures.Squad(s) for (ss, oxp, _), s in best_squads),
-        key=lambda x: (1 / (x.sscore() + 1), x.CxP()),
-    )
+    return [
+        structures.Squad(heapq.heappop(best_squads)[-1])
+        for _ in range(len(best_squads))
+    ]
 
 
 def position_price_candidates(
@@ -195,11 +222,10 @@ def position_price_candidates(
     ):
         toadd = []
         team = set[str]()
-        candidates = sorted(list(players), key=lambda x: x.xP, reverse=True)
-        for candiate in candidates:
-            if candiate.team not in team:
-                toadd.append(candiate)
-                team.add(candiate.team)
+        for player in sorted(list(players), key=lambda x: x.xP or 0, reverse=True):
+            if player.team not in team:
+                toadd.append(player)
+                team.add(player.team)
         yield from toadd[:topn]
 
 
@@ -235,7 +261,7 @@ def main():
     parser.add_argument(
         "--keep-squad",
         type=int,
-        default=100,
+        default=100_000,
         help="(default: %(default)s)",
     )
     parser.add_argument(
@@ -273,18 +299,30 @@ def main():
         default=0,
         help="(default: %(default)s)",
     )
+    parser.add_argument(
+        "--max-players-per-team",
+        type=int,
+        default=3,
+        help="(default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
-    pool = [
-        p for p in fetch.players() if p.mtm() >= args.min_mtm and p.xP >= args.min_xp
-    ]
+    pool = [p for p in fetch.players() if p.xP is not None]
+    pool = [p for p in pool if p.mtm() >= args.min_mtm and p.xP >= args.min_xp]
 
     if args.no_news:
         pool = [p for p in pool if not p.news]
 
-    remove: set[str] = set(r.lower() for r in args.remove)
+    player_names = set(p.webname.lower() for p in pool)
+    remove: set[str] = set(r.lower() for r in args.remove if r.lower() in player_names)
     pool = [p for p in pool if p.webname.lower() not in remove]
+
+    team_names = set(p.team.lower() for p in pool)
+    remove_team: set[str] = set(
+        r.lower() for r in args.remove if r.lower() in team_names
+    )
+    pool = [p for p in pool if p.team.lower() not in remove_team]
 
     if args.top_position_price:
         pool = list(
@@ -316,6 +354,7 @@ def main():
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
         include=include,
+        max_players_per_team=args.max_players_per_team,
         n_squads=args.keep_squad,
     )
 
@@ -326,23 +365,35 @@ def main():
         squads = [
             s
             for s in squads
-            if max(C.Counter(p.team for p in s if p.position == "DEF").values())
+            if max(
+                collections.Counter(p.team for p in s if p.position == "DEF").values()
+            )
             <= args.max_def_per_team
         ]
 
+    for player, cnt in collections.Counter(
+        p for squad in squads for p in squad.players
+    ).items():
+        print(player, round(cnt / len(squads) * 100, 2))
+
     print("\n\n".join(str(s) for s in squads[-10:]))
 
-    # print(
-    #     min(s.oxP for s in squads),
-    #     max(s.oxP for s in squads),
-    #     max(s.oxP for s in squads) - min(s.oxP for s in squads),
-    # )
+    mincxp = min(s.CxP() for s in squads)
+    maxxcp = max(s.CxP() for s in squads)
+    minss = squads[-1].sscore()
+    maxss = squads[0].sscore()
 
-    # print(
-    #     min(s.sscore for s in squads),
-    #     max(s.sscore for s in squads),
-    #     max(s.sscore for s in squads) - min(s.sscore for s in squads),
-    # )
+    print("")
+    print(
+        f"Min CxP: {mincxp:.2f}",
+        f"Max CxP: {maxxcp:.2f}",
+        f"Max-Min CxP: {(maxxcp-mincxp):.2f}",
+    )
+    print(
+        f"Min ss: {minss:d}",
+        f"Max ss: {maxss:d}",
+        f"Max-Min ss: {(maxss-minss):d}",
+    )
 
 
 if __name__ == "__main__":

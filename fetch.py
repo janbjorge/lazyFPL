@@ -70,7 +70,6 @@ def players() -> list["structures.Player"]:
             if conf.env.debug:
                 print(e)
             continue
-
         pool.append(
             structures.Player(
                 fixutres=fixtures,
@@ -80,21 +79,16 @@ def players() -> list["structures.Player"]:
                 price=database.price(games[-1].player_id),
                 team=team,
                 webname=database.webname(games[-1].player_id),
+                xP=None,
             )
         )
 
-    remove = set[structures.Player]()
     for p in pool:
         try:
             p.xP = ml_model.xP(p)
         except ValueError as e:
             if conf.env.debug:
                 traceback.print_exc()
-            remove.add(p)
-
-    for r in remove:
-        while r in pool:
-            pool.remove(r)
 
     return pool
 

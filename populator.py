@@ -3,6 +3,7 @@ import datetime
 import functools
 import io
 import pprint
+import traceback
 import typing as T
 
 import pydantic
@@ -52,16 +53,15 @@ def db_name_pid() -> dict[str, int]:
 
 
 @functools.cache
-def player_id_fuzzer(name: str) -> int:
-    name = name.lower()
+def player_id_fuzzer(name: str) -> T.Optional[int]:
     for dname, pid in db_name_pid().items():
-        dname = dname.lower()
-        if dname == name:
+        if dname.casefold() == name.casefold():
             return pid
-        if all(n in dname for n in name.split()):
+        if all(n in dname.casefold() for n in name.casefold().split()):
             return pid
-        if all(n in name for n in dname.split()):
+        if all(n in name.casefold() for n in dname.casefold().split()):
             return pid
+
     raise KeyError(name)
 
 
@@ -265,6 +265,7 @@ def populate_games() -> None:
             (SELECT id FROM team WHERE session = ? AND name = ?)
         );
     """
+    no_pid = set[str]()  # Print once per player name, avoid cli-spam.
     for session, games in past_game_lists().items():
         for game in tqdm(
             games,
@@ -280,15 +281,15 @@ def populate_games() -> None:
                 historic = structures.HistoricGame.parse_obj(game)
             except pydantic.ValidationError as e:
                 if conf.env.debug:
-                    pprint.pp(game)
-                    print(str(e))
+                    traceback.print_exception(e)
                 continue
 
             try:
                 pid = player_id_fuzzer(historic.name)
             except KeyError as e:
-                if conf.env.debug:
-                    print(e)
+                if conf.env.debug and historic.name not in no_pid:
+                    traceback.print_exception(e)
+                no_pid.add(historic.name)
                 continue
 
             try:
@@ -312,7 +313,7 @@ def populate_games() -> None:
             except database.sqlite3.IntegrityError as e:
                 # The player does not play this year.
                 if conf.env.debug:
-                    print(e)
+                    traceback.print_exception(e)
                 continue
 
     database.execute(

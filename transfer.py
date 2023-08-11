@@ -35,8 +35,8 @@ def display(
 
 
 def transfer(
-    current: T.List["structures.Player"],
-    pool: T.List["structures.Player"],
+    current: T.Sequence["structures.Player"],
+    pool: T.Sequence["structures.Player"],
     max_transfers: int,
     bar: tqdm,
 ):
@@ -112,14 +112,14 @@ def main() -> None:
         for p in fetch.players()
         if p.xP >= args.min_xp and p.mtm() >= args.min_mtm and not p.news
     ]
-    pool = sorted(pool, key=lambda p: p.xP)
+    pool = sorted(pool, key=lambda p: p.xP or 0)
     pool = pool[-args.top :]
     print(">>> Pool")
-    helpers.lprint(pool)
+    print(structures.Squad(pool))
 
     print(">>>> Current team")
-    team = list(fetch.my_team())
-    helpers.lprint(team, best=[p.name for p in helpers.best_lineup(team)])
+    team = fetch.my_team()
+    print(team)
 
     add = set(p for p in fetch.players() if p.name in args.add or p.webname in args.add)
     assert len(add) == len(args.add), (add, args.add)
@@ -128,7 +128,7 @@ def main() -> None:
         p for p in fetch.players() if p.name in args.remove or p.team in args.remove
     )
 
-    oxp = helpers.overall_xP(team)
+    oxp = helpers.overall_xP(team.players)
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -140,7 +140,7 @@ def main() -> None:
             (
                 n
                 for n in transfer(
-                    current=team,
+                    current=team.players,
                     pool=list(set(pool + list(add))),
                     max_transfers=args.max_transfers,
                     bar=bar,
@@ -153,7 +153,7 @@ def main() -> None:
             ),
             key=helpers.overall_xP,
         )[-(args.top or 25) :]:
-            display(team, new, bar)
+            display(team.players, new, bar)
 
 
 if __name__ == "__main__":

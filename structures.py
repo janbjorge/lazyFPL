@@ -1,4 +1,3 @@
-import collections
 import dataclasses
 import datetime
 import itertools
@@ -9,6 +8,7 @@ import pydantic
 
 import conf
 import database
+import helpers
 
 
 @dataclasses.dataclass(frozen=True)
@@ -18,8 +18,8 @@ class Difficulty:
     overall: float
 
     @property
-    def combined(self):
-        return (self.attack**2 + self.defence**2 + self.overall**2) ** (1 / 2)
+    def mean(self):
+        return statistics.mean((self.attack, self.defence, self.overall))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -51,24 +51,24 @@ class Fixture:
     def relative(self) -> Difficulty:
         if self.at_home:
             attack = (
-                self.team_strength_attack_home / self.opponent_strength_defence_away
-            )
+                self.team_strength_attack_home - self.opponent_strength_defence_away
+            ) / (self.team_strength_attack_home + self.opponent_strength_defence_away)
             defence = (
-                self.team_strength_defence_home / self.opponent_strength_attack_away
-            )
+                self.team_strength_defence_home - self.opponent_strength_attack_away
+            ) / (self.team_strength_defence_home + self.opponent_strength_attack_away)
             overall = (
-                self.team_strength_overall_home / self.opponent_strength_overall_away
-            )
+                self.team_strength_overall_home - self.opponent_strength_overall_away
+            ) / (self.team_strength_overall_home + self.opponent_strength_overall_away)
         else:
             attack = (
-                self.team_strength_attack_away / self.opponent_strength_defence_home
-            )
+                self.team_strength_attack_away - self.opponent_strength_defence_home
+            ) / (self.team_strength_attack_away + self.opponent_strength_defence_home)
             defence = (
-                self.team_strength_defence_away / self.opponent_strength_attack_home
-            )
+                self.team_strength_defence_away - self.opponent_strength_attack_home
+            ) / (self.team_strength_defence_away + self.opponent_strength_attack_home)
             overall = (
-                self.team_strength_overall_away / self.opponent_strength_overall_home
-            )
+                self.team_strength_overall_away - self.opponent_strength_overall_home
+            ) / (self.team_strength_overall_away + self.opponent_strength_overall_home)
         return Difficulty(
             attack=attack,
             defence=defence,
@@ -78,19 +78,19 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
-    fixutres: list[Fixture] = dataclasses.field(compare=False)
+    fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=True)
     position: database.POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
-    xP: float = 0.0
+    xP: T.Optional[float]
 
     def tp(self, session: database.SESSIONS = database.CURRENT_SESSION) -> int:
         return sum(f.points or 0 for f in self.fixutres if f.session == session)
 
-    def mtm(self, last: int = 5) -> float:
+    def mtm(self, last: int = conf.env.backtrace) -> float:
         # fixutre.minutes is None if the gameweek is not started
         # need to filter out fixutres with minutes as none.
         try:
@@ -108,7 +108,7 @@ class Player:
 
     def upcoming_difficulty(self) -> float:
         upcoming = [f for f in self.fixutres if f.upcoming][: conf.env.lookahead]
-        return sum(f.relative.combined for f in upcoming)
+        return statistics.mean(f.relative.mean for f in upcoming)
 
     @property
     def next_opponent(self) -> str:
@@ -128,7 +128,7 @@ class Player:
 
     def __str__(self):
         return (
-            f"{self.xP:<6.2f} {self.price:<6.1f} {self.tp():<4} "
+            f"{(self.xP or 0):<6.2f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{self.news}"
@@ -138,73 +138,31 @@ class Player:
 class Squad:
     def __init__(self, players: T.Sequence[Player]):
         self.players = players
-        # self.bis = bis or helpers.best_lineup(self.players)
-        # self.oxP = oxP or helpers.overall_xP(self.players)
-        # self.sscore = sscore or helpers.sscore(self.players)
 
     def price(self) -> int:
-        return sum(p.price for p in self.players)
+        return helpers.squad_price(self.players)
 
-    def valid_squad(
-        self, gkps: int = 2, defs: int = 5, mids: int = 5, fwds: int = 3
-    ) -> bool:
-        cnt = collections.Counter(p.position for p in self.players)
-        return (
-            cnt["GKP"] == gkps
-            and cnt["DEF"] == defs
-            and cnt["MID"] == mids
-            and cnt["FWD"] == fwds
-        )
-
-    def best_lineup(
-        self,
-        min_gkp: int = 1,
-        min_def: int = 3,
-        min_mid: int = 2,
-        min_fwd: int = 1,
-        size: int = 11,
-    ) -> list[Player]:
-        team = sorted(self.players, key=lambda x: x.xP, reverse=True)
-        gkps = [p for p in team if p.position == "GKP"]
-        defs = [p for p in team if p.position == "DEF"]
-        mids = [p for p in team if p.position == "MID"]
-        fwds = [p for p in team if p.position == "FWD"]
-        best = gkps[:min_gkp] + defs[:min_def] + mids[:min_mid] + fwds[:min_fwd]
-        remainder = sorted(
-            defs[min_def:] + mids[min_mid:] + fwds[min_fwd:],
-            key=lambda x: x.xP,
-            reverse=True,
-        )
-        return best + remainder[: (size - len(best))]
+    def best_lineup(self) -> list[Player]:
+        return helpers.best_lineup(self.players)
 
     def SxP(self) -> float:
         # Squad xP
-        return sum(p.xP for p in self.players)
+        return helpers.squad_xP(self.players)
 
     def LxP(self) -> float:
         # Lineup xP
-        return sum(p.xP for p in self.best_lineup())
+        return helpers.squad_xP(self.best_lineup())
 
     def CxP(self) -> float:
         # Combined xP
         return (self.SxP() ** 2 + self.LxP() ** 2) ** 0.5
 
+    def tscore(self) -> int:
+        return helpers.tcnt(self.players)
+
     def sscore(self, n: int = conf.env.lookahead) -> int:
         # "sscore -> "schedule score"
-        # counts players in the lineup who plays in same match.
-        # Ex. l'pool vs. man. city, and you team has Haaland and Salah as the only
-        # players from the l'pool and city, the sscore is 2 since both play
-        # the same match (assuming they start/play ofc.)
-
-        per_gw = collections.defaultdict(list)
-        for player in self.players:
-            for i, nextopp in enumerate(player.upcoming_opponents()[:n]):
-                per_gw[i].append((player.team, nextopp))
-
-        score = 0
-        for vs in per_gw.values():
-            score += sum(vs.count(x[::-1]) for x in set(vs))
-        return score
+        return helpers.sscore(self.players, n=n)
 
     def __iter__(self):
         yield from self.players
@@ -216,21 +174,21 @@ class Squad:
         pospri = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
         yield f"Price: {self.price()/10} Size: {len(self.players)}"
         yield f"LxP: {self.LxP():.2f} SxP: {self.SxP():.2f} CxP: {self.CxP():.2f}"
-        yield f"Schedule score: {self.sscore()}"
-        for pos, players in itertools.groupby(
+        yield f"Schedule score: {self.sscore()} Team score: {self.tscore()} Cmb: {(self.sscore()**2 + self.tscore()**2)**0.5:.2f}"
+        yield (
+            "BIS  xP     Price  TP   UD       Team            Position  Player"
+            + " " * 15
+            + "News"
+        )
+        for _, players in itertools.groupby(
             sorted(
                 self.players,
-                key=lambda x: (pospri.get(x.position), x.xP),
+                key=lambda x: (pospri.get(x.position), x.xP or 0),
                 reverse=True,
             ),
             key=lambda x: x.position,
         ):
-            yield f"\n{pos.upper()}"
-            yield (
-                "BIS  xP     Price  TP   UD       Team            Position  Player"
-                + " " * 15
-                + "News"
-            )
+            yield ""
             for player in players:
                 yield ("X    " if player in self.best_lineup() else "     ") + str(
                     player
@@ -277,6 +235,10 @@ class HistoricGame(pydantic.BaseModel):
     was_home: bool
     yellow_cards: int
     GW: int
+
+    @pydantic.validator("position", pre=True)
+    def gk_to_gkp(cls, value: str) -> str:
+        return "GKP" if value == "GK" else value
 
 
 class UpcommingGame(pydantic.BaseModel):

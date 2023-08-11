@@ -117,7 +117,7 @@ class SequenceDataset(TorchDataset):
     def __init__(
         self,
         fixtures: list["structures.Fixture"],
-        backtrace: int = 3,
+        backtrace: int = conf.env.backtrace,
     ) -> None:
         x, y = samples(fixtures, backtrace)
         self.x, self.y = torch.Tensor(x), torch.Tensor(y)
@@ -205,7 +205,6 @@ def xP(
     lookahead: int = conf.env.lookahead,
     backtrace: int = conf.env.backtrace,
 ) -> float:
-    debug = conf.env.debug
     expected = list[float]()
     inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
     upcoming = [f for f in player.fixutres if f.upcoming]
@@ -214,7 +213,7 @@ def xP(
     model.eval()
     with torch.no_grad():
         for _next in upcoming[:lookahead]:
-            if debug:
+            if conf.env.debug:
                 for i in inference:
                     print(i)
             inf = np.expand_dims(
@@ -233,7 +232,7 @@ def xP(
                 )
             )
 
-    if debug:
+    if conf.env.debug:
         print(player.name, player.team, expected)
 
     return round(sum(expected), 2)
@@ -277,6 +276,9 @@ def main():
     ) as bar:
         for player in players:
             bar.update(1)
+            if len([f for f in player.fixutres if not f.upcoming]) < 3:
+                print(f"To few historic fixutres: {player.name}", flush=True)
+                continue
             m = train(player, epochs=args.epochs, lr=args.lr)
             save(player, m)
             bar.write(
