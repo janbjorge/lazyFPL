@@ -19,19 +19,22 @@ if conf.debug:
 
 
 class Net(torch.nn.Module):
-    def __init__(self, sensors: int, rnn_hidden: int = 16) -> None:
+    def __init__(self, sensors: int, rnn_hidden: int = 8) -> None:
         super().__init__()
         self.rrn_hidden = rnn_hidden
         self.num_layers = 1
         self.sensors = sensors
-        self.dropout = torch.nn.Dropout(0.5)
+        self.dropout = torch.nn.Dropout(0.2)
         self.rnn = torch.nn.GRU(
             input_size=sensors,
             hidden_size=rnn_hidden,
             batch_first=True,
-            num_layers=self.num_layers,
         )
-        self.linear = torch.nn.Linear(
+        self.lineara = torch.nn.Linear(
+            in_features=rnn_hidden,
+            out_features=rnn_hidden,
+        )
+        self.linearb = torch.nn.Linear(
             in_features=rnn_hidden,
             out_features=1,
         )
@@ -44,7 +47,7 @@ class Net(torch.nn.Module):
             self.rrn_hidden,
         ).requires_grad_()
         _, h_final = self.rnn(x, h_init)
-        return self.linear(self.dropout(h_final)).flatten()
+        return self.linearb(self.lineara(self.dropout(h_final))).flatten()
 
 
 def normalization(v: float, s: "database.SampleSummay") -> float:
@@ -135,7 +138,7 @@ def samples(
 ) -> tuple[list[tuple[tuple[float, ...], ...]], list[float]]:
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
-    back = (backtrace + 2) ** 2
+    back = (backtrace + 2) * 3
     assert isinstance(back, int) and back > 0
     train = [f for f in fixtures if not f.upcoming][-back:]
 
@@ -155,8 +158,8 @@ def samples(
 
 def train(
     player: "structures.Player",
-    epochs: int = 50,
-    lr: float = 1e-2,
+    epochs: int,
+    lr: float,
 ):
     ds = SequenceDataset(player.fixutres)
     loader = TorchDataLoader(ds, batch_size=8, shuffle=True)
@@ -206,16 +209,14 @@ def xP(
     backtrace: int = conf.backtrace,
 ) -> float:
     expected = list[float]()
-    inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
-    upcoming = [f for f in player.fixutres if f.upcoming]
+    fixutres = sorted(player.fixutres, key=lambda x: x.kickoff_time)
+    inference = [features(f) for f in fixutres if not f.upcoming][-backtrace:]
+    upcoming = [f for f in fixutres if f.upcoming]
 
     model = load(player)
     model.eval()
     with torch.no_grad():
-        for _next in upcoming[:lookahead]:
-            if conf.debug:
-                for i in inference:
-                    print(i)
+        for nxt in upcoming[:lookahead]:
             inf = np.expand_dims(
                 np.stack(
                     [np.array(x, dtype=np.float32) for x in inference],
@@ -230,7 +231,7 @@ def xP(
             inference.append(
                 features(
                     structures.Fixture(
-                        **(dataclasses.asdict(_next) | dict(points=points))
+                        **(dataclasses.asdict(nxt) | dict(points=points))
                     )
                 )
             )
@@ -238,7 +239,7 @@ def xP(
     if conf.debug:
         print(player.name, player.team, expected)
 
-    return round(sum(expected), 2)
+    return round(sum(expected), 1)
 
 
 def main():
@@ -250,19 +251,19 @@ def main():
     parser.add_argument(
         "--lr",
         type=float,
-        default=1e-2,
+        default=0.01,
         help="(default: %(default)s)",
     )
     parser.add_argument(
         "--min-mtm",
         type=int,
-        default=45,
+        default=30,
         help="(default: %(default)s)",
     )
     parser.add_argument(
         "--epochs",
         type=int,
-        default=50,
+        default=500,
         help="(default: %(default)s)",
     )
 
@@ -285,7 +286,7 @@ def main():
             m = train(player, epochs=args.epochs, lr=args.lr)
             save(player, m)
             bar.write(
-                f"{xP(player):.2f} "
+                f"{xP(player):<6.2f} "
                 + f"{player.name} ("
                 + f"{player.team} - "
                 + f"{player.next_opponent})"

@@ -128,7 +128,7 @@ class Player:
 
     def __str__(self):
         return (
-            f"{(self.xP or 0):<6.2f} {self.price:<6.1f} {self.tp():<4} "
+            f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{self.news}"
