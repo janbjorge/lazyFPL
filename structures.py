@@ -90,7 +90,7 @@ class Player:
     def tp(self, session: database.SESSIONS = database.CURRENT_SESSION) -> int:
         return sum(f.points or 0 for f in self.fixutres if f.session == session)
 
-    def mtm(self, last: int = conf.env.backtrace) -> float:
+    def mtm(self, last: int = conf.backtrace) -> float:
         # fixutre.minutes is None if the gameweek is not started
         # need to filter out fixutres with minutes as none.
         try:
@@ -107,7 +107,7 @@ class Player:
             return 0.0
 
     def upcoming_difficulty(self) -> float:
-        upcoming = [f for f in self.fixutres if f.upcoming][: conf.env.lookahead]
+        upcoming = [f for f in self.fixutres if f.upcoming][: conf._env.lookahead]
         return statistics.mean(f.relative.mean for f in upcoming)
 
     @property
@@ -160,7 +160,7 @@ class Squad:
     def tscore(self) -> int:
         return helpers.tcnt(self.players)
 
-    def sscore(self, n: int = conf.env.lookahead) -> int:
+    def sscore(self, n: int = conf.lookahead) -> int:
         # "sscore -> "schedule score"
         return helpers.sscore(self.players, n=n)
 

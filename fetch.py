@@ -1,13 +1,13 @@
+import datetime
 import functools
 import itertools
-import os
 import traceback
 
+import dateutil.parser
 import requests
 
 import conf
 import database
-import helpers
 import ml_model
 import structures
 
@@ -17,6 +17,33 @@ def bootstrap() -> dict:
     return requests.get(
         "https://fantasy.premierleague.com/api/bootstrap-static/"
     ).json()
+
+
+def bootstrap_events() -> list[dict]:
+    return bootstrap()["events"]
+
+
+def next_gw() -> int:
+    for e in bootstrap_events():
+        if e["is_next"]:
+            return int(e["id"])
+    raise ValueError
+
+
+def current_gw() -> int:
+    for e in bootstrap_events():
+        if e["is_current"]:
+            return int(e["id"])
+    raise ValueError
+
+
+def next_deadline() -> datetime.timedelta:
+    for e in bootstrap_events():
+        if e["is_next"]:
+            deadline = dateutil.parser.parse(e["deadline_time"])
+            now = datetime.datetime.now(tz=datetime.timezone.utc)
+            return deadline - now
+    raise ValueError
 
 
 @functools.cache
@@ -67,8 +94,8 @@ def players() -> list["structures.Player"]:
         try:
             team = [g for g in games if g.upcoming][-1].team
         except IndexError as e:
-            if conf.env.debug:
-                print(e)
+            if conf.debug:
+                traceback.print_exception(e)
             continue
         pool.append(
             structures.Player(
@@ -87,29 +114,23 @@ def players() -> list["structures.Player"]:
         try:
             p.xP = ml_model.xP(p)
         except ValueError as e:
-            if conf.env.debug:
-                traceback.print_exc()
+            if conf.debug:
+                traceback.print_exception(e)
 
     return pool
 
 
 @functools.cache
 def picks(team_id: str) -> dict:
-    gmw = 1
-    prev = None
-    while req := requests.get(
-        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{gmw}/picks/",
+    return requests.get(
+        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw()}/picks/",
         timeout=10,
-    ):
-        gmw += 1
-        prev = req
-    assert prev is not None
-    return prev.json()["picks"]
+    ).json()["picks"]
 
 
 @functools.cache
 def my_team(
-    team_id: str = os.environ.get("FPL_TEAMID", ""),
+    team_id: str = conf.teamid,
 ) -> structures.Squad:
     assert team_id
     names = set(player_name(pick["element"]) for pick in picks(team_id))
@@ -117,4 +138,22 @@ def my_team(
 
 
 if __name__ == "__main__":
-    print(structures.Squad(players()))
+    import sys
+
+    to_show = sys.argv[1:]
+    for p in sorted(players(), key=lambda x: (x.team, x.webname)):
+        if p.webname in to_show or p.team in to_show:
+            print(f"{p.webname} ({p.team})")
+            for f in sorted(
+                (f for f in p.fixutres if f.points is not None),
+                key=lambda x: x.kickoff_time,
+                reverse=True,
+            )[: conf.backtrace]:
+                vs = (
+                    f"{f.opponent} vs. {p.team}"
+                    if f.at_home
+                    else f"{p.team} vs. {f.opponent}"
+                )
+                print(
+                    f"  {vs:<30} Points: {f.points} Minutes: {f.minutes} Diff: {f.relative.mean:.2f}"
+                )

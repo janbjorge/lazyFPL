@@ -14,7 +14,7 @@ import fetch
 import populator
 import structures
 
-if conf.env.debug:
+if conf.debug:
     torch.set_printoptions(threshold=10_000)
 
 
@@ -117,7 +117,7 @@ class SequenceDataset(TorchDataset):
     def __init__(
         self,
         fixtures: list["structures.Fixture"],
-        backtrace: int = conf.env.backtrace,
+        backtrace: int = conf.backtrace,
     ) -> None:
         x, y = samples(fixtures, backtrace)
         self.x, self.y = torch.Tensor(x), torch.Tensor(y)
@@ -202,8 +202,8 @@ def save(player: "structures.Player", m: "Net") -> None:
 
 def xP(
     player: "structures.Player",
-    lookahead: int = conf.env.lookahead,
-    backtrace: int = conf.env.backtrace,
+    lookahead: int = conf.lookahead,
+    backtrace: int = conf.backtrace,
 ) -> float:
     expected = list[float]()
     inference = [features(f) for f in player.fixutres if not f.upcoming][-backtrace:]
@@ -213,11 +213,14 @@ def xP(
     model.eval()
     with torch.no_grad():
         for _next in upcoming[:lookahead]:
-            if conf.env.debug:
+            if conf.debug:
                 for i in inference:
                     print(i)
             inf = np.expand_dims(
-                np.stack(inference, axis=0).astype(np.float32),
+                np.stack(
+                    [np.array(x, dtype=np.float32) for x in inference],
+                    axis=0,
+                ).astype(np.float32),
                 axis=0,
             )
             points = model(torch.from_numpy(inf)).detach().numpy()
@@ -232,7 +235,7 @@ def xP(
                 )
             )
 
-    if conf.env.debug:
+    if conf.debug:
         print(player.name, player.team, expected)
 
     return round(sum(expected), 2)

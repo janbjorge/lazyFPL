@@ -2,7 +2,6 @@ import csv
 import datetime
 import functools
 import io
-import pprint
 import traceback
 import typing as T
 
@@ -53,7 +52,7 @@ def db_name_pid() -> dict[str, int]:
 
 
 @functools.cache
-def player_id_fuzzer(name: str) -> T.Optional[int]:
+def player_id_fuzzer(name: str) -> int:
     for dname, pid in db_name_pid().items():
         if dname.casefold() == name.casefold():
             return pid
@@ -280,14 +279,14 @@ def populate_games() -> None:
             try:
                 historic = structures.HistoricGame.parse_obj(game)
             except pydantic.ValidationError as e:
-                if conf.env.debug:
+                if conf.debug:
                     traceback.print_exception(e)
                 continue
 
             try:
                 pid = player_id_fuzzer(historic.name)
             except KeyError as e:
-                if conf.env.debug and historic.name not in no_pid:
+                if conf.debug and historic.name not in no_pid:
                     traceback.print_exception(e)
                 no_pid.add(historic.name)
                 continue
@@ -312,7 +311,7 @@ def populate_games() -> None:
                 )
             except database.sqlite3.IntegrityError as e:
                 # The player does not play this year.
-                if conf.env.debug:
+                if conf.debug:
                     traceback.print_exception(e)
                 continue
 
@@ -344,9 +343,8 @@ def populate_games() -> None:
             try:
                 upcoming = structures.UpcommingGame.parse_obj(game)
             except pydantic.ValidationError as e:
-                if conf.env.debug:
-                    print(str(e))
-                    pprint.pp(game)
+                if conf.debug:
+                    traceback.print_exception(e)
                 continue
 
             # A past game, data allready logged.

@@ -59,7 +59,7 @@ def valid_squad(
     )
 
 
-def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.env.lookahead) -> int:
+def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> int:
     # "sscore -> "schedule score"
     # counts players in the lineup who plays in same match.
     # Ex. l'pool vs. man. city, and you team has Haaland and Salah as the only
@@ -79,3 +79,7 @@ def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.env.lookahead)
 
 def tcnt(lineup: T.Sequence["structures.Player"]) -> int:
     return sum(v - 1 for v in collections.Counter(p.team for p in lineup).values()) * 2
+
+
+def yarr(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> float:
+    return (tcnt(lineup) ** 2 + sscore(lineup, n=n) ** 2) ** 0.5

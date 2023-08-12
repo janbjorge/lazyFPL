@@ -32,6 +32,7 @@ def display(
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
         )
     log.write(f"lxp gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.2f}")
+    log.write(f"yar gain: {(helpers.yarr(new) - helpers.yarr(old)):.2f}")
 
 
 def transfer(
@@ -71,6 +72,7 @@ def transfer(
     bar.total = total
 
     current_oxp = helpers.overall_xP(current)
+    current_yar = helpers.yarr(current)
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
@@ -84,6 +86,7 @@ def transfer(
 
                 if (
                     helpers.overall_xP(squad) > current_oxp
+                    and helpers.yarr(squad) < current_yar
                     and helpers.valid_squad(squad)
                     and len(set(squad)) == 15
                     and constraints.team_constraint(squad, 3)
@@ -107,9 +110,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    pool = [p for p in fetch.players() if p.xP is not None]
     pool = [
         p
-        for p in fetch.players()
+        for p in pool
         if p.xP >= args.min_xp and p.mtm() >= args.min_mtm and not p.news
     ]
     pool = sorted(pool, key=lambda p: p.xP or 0)

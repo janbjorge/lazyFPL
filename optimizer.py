@@ -177,14 +177,7 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
                             sequence += 1
-                            inv = 1 / (
-                                1
-                                + (
-                                    helpers.sscore(squad) ** 2
-                                    + helpers.tcnt(squad) ** 2
-                                )
-                                ** 0.5
-                            )
+                            inv = 1 / (1 + helpers.yarr(squad))
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
                                     best_squads,
