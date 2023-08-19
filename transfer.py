@@ -1,4 +1,5 @@
 import argparse
+import heapq
 import itertools
 import typing as T
 
@@ -27,52 +28,71 @@ def display(
     log.write("-" * 75)
     for o, i in zip(transfers_out, transfers_in):
         log.write(
-            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.2f}"
+            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.1f}"
             "  -->>  "
-            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.2f}"
+            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.1f}"
         )
-    log.write(f"lxp gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.2f}")
-    log.write(f"yar gain: {(helpers.yarr(new) - helpers.yarr(old)):.2f}")
+    log.write(f"OxP gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.1f}")
+    log.write(f"TS  gain: {(helpers.tsscore(new) - helpers.tsscore(old)):.1f}")
 
 
 def transfer(
     current: T.Sequence["structures.Player"],
     pool: T.Sequence["structures.Player"],
+    remove: T.Sequence["structures.Player"],
+    add: T.Sequence["structures.Player"],
     max_transfers: int,
+    max_candidates: int,
     bar: tqdm,
 ):
 
     max_budget = helpers.squad_price(current)
-    min_budget = max_budget * 0.9
+    min_budget = max_budget * 0.8
+    candidates = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()
 
-    squad_base = dict[int, tuple[tuple[tuple[structures.Player, ...], int], ...]]()
-    for n in range(1, max_transfers + 1):
-        squad_base[n] = tuple(
+    squad_base = {
+        n: tuple(
             (c, helpers.squad_price(c))
             for c in sorted(
                 itertools.combinations(current, len(current) - n),
                 key=helpers.squad_price,
             )
         )
+        for n in range(1, max_transfers + 1)
+    }
+    squad_base = {
+        n: tuple(
+            (players, cost)
+            for players, cost in squad_cost
+            if all(r not in players for r in remove)
+        )
+        for n, squad_cost in squad_base.items()
+    }
 
-    transfer_in = dict[int, tuple[tuple[tuple[structures.Player, ...], int], ...]]()
-    for n in range(1, max_transfers + 1):
-        transfer_in[n] = tuple(
+    transfer_in = {
+        n: tuple(
             (c, helpers.squad_price(c))
             for c in sorted(
                 itertools.combinations(pool, n),
                 key=helpers.squad_price,
             )
         )
+        for n in range(1, max_transfers + 1)
+    }
+    transfer_in = {
+        n: tuple(
+            (players, cost)
+            for players, cost in squad_cost
+            if all(a in players for a in add)
+        )
+        for n, squad_cost in transfer_in.items()
+    }
 
-    total = 0
-    for n in range(1, max_transfers + 1):
-        for _ in squad_base[n]:
-            total += len(transfer_in[n])
-    bar.total = total
+    bar.total = sum(
+        len(transfer_in[n]) * len(squad_base[n]) for n in range(1, max_transfers + 1)
+    )
 
-    current_oxp = helpers.overall_xP(current)
-    current_yar = helpers.yarr(current)
+    sequence: int = 0
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
@@ -82,17 +102,42 @@ def transfer(
                     break
                 if cost < min_budget:
                     continue
+
                 squad = base + t_in
 
+                if add and all(a not in squad for a in add):
+                    continue
+
                 if (
-                    helpers.overall_xP(squad) > current_oxp
-                    and helpers.yarr(squad) < current_yar
-                    and helpers.valid_squad(squad)
-                    and len(set(squad)) == 15
+                    helpers.valid_squad(squad)
                     and constraints.team_constraint(squad, 3)
+                    and len(set(squad)) == 15
                 ):
-                    yield squad
+                    oxp = round(helpers.overall_xP(squad), 1)
+                    inv = round(1 / (1 + helpers.tsscore(squad)), 3)
+                    sequence += 1
+                    if len(candidates) >= max_candidates:
+                        heapq.heappushpop(
+                            candidates,
+                            (
+                                (inv, oxp, sequence),
+                                squad,
+                            ),
+                        )
+                    else:
+                        heapq.heappush(
+                            candidates,
+                            (
+                                (inv, oxp, sequence),
+                                squad,
+                            ),
+                        )
+
             bar.update(len(transfer_in[n]))
+
+    return [
+        structures.Squad(heapq.heappop(candidates)[-1]) for _ in range(len(candidates))
+    ]
 
 
 def main() -> None:
@@ -101,38 +146,63 @@ def main() -> None:
         prog="Transfer picker.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--add", nargs="+", default=[])
-    parser.add_argument("--max-transfers", type=int, required=True)
-    parser.add_argument("--min-mtm", default=0.0, type=float)
-    parser.add_argument("--min-xp", default=0.0, type=float)
-    parser.add_argument("--remove", nargs="+", default=[])
-    parser.add_argument("--top", type=int, default=0)
+    parser.add_argument(
+        "--add",
+        nargs="+",
+        default=[],
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        default=[],
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--max-transfers",
+        type=int,
+        required=True,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-mtm",
+        default=0.0,
+        type=float,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-xp",
+        default=0.0,
+        type=float,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--remove",
+        nargs="+",
+        default=[],
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-news",
+        action="store_true",
+        help="(default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
     pool = [p for p in fetch.players() if p.xP is not None]
-    pool = [
-        p
-        for p in pool
-        if p.xP >= args.min_xp and p.mtm() >= args.min_mtm and not p.news
-    ]
-    pool = sorted(pool, key=lambda p: p.xP or 0)
-    pool = pool[-args.top :]
+    pool = [p for p in pool if p.webname not in args.exclude]
+    pool = [p for p in pool if p.team not in args.exclude]
+    pool = [p for p in pool if p.xP >= args.min_xp]
+    pool = [p for p in pool if p.mtm() >= args.min_mtm]
+    pool = [p for p in pool if args.no_news and not bool(p.news)]
+
+    pool = sorted(list(pool), key=lambda p: p.xP or 0)
     print(">>> Pool")
     print(structures.Squad(pool))
 
-    print(">>>> Current team")
+    print("\n>>>> Current team")
     team = fetch.my_team()
-    print(team)
-
-    add = set(p for p in fetch.players() if p.name in args.add or p.webname in args.add)
-    assert len(add) == len(args.add), (add, args.add)
-
-    remove = set(
-        p for p in fetch.players() if p.name in args.remove or p.team in args.remove
-    )
-
-    oxp = helpers.overall_xP(team.players)
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -140,24 +210,21 @@ def main() -> None:
         unit_divisor=1_000,
         ascii=True,
     ) as bar:
-        for new in sorted(
-            (
-                n
-                for n in transfer(
-                    current=team.players,
-                    pool=list(set(pool + list(add))),
-                    max_transfers=args.max_transfers,
-                    bar=bar,
-                )
-                if (
-                    (not add or all(a in n for a in add))
-                    and (not remove or not any(r in n for r in remove))
-                    and helpers.overall_xP(n) > oxp
-                )
-            ),
-            key=helpers.overall_xP,
-        )[-(args.top or 25) :]:
-            display(team.players, new, bar)
+        for new_squad in transfer(
+            current=team.players,
+            pool=pool,
+            max_transfers=args.max_transfers,
+            max_candidates=100,
+            bar=bar,
+            remove=[
+                p
+                for p in team.players
+                if p.webname in args.remove or p.team in args.remove
+            ]
+            + [p for p in team.players if args.no_news and p.news],
+            add=[p for p in pool if p.webname in args.add or p.team in args.add],
+        ):
+            display(team.players, new_squad, bar)
 
 
 if __name__ == "__main__":

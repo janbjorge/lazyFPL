@@ -129,7 +129,7 @@ class Player:
     def __str__(self):
         return (
             f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
-            f"{self.upcoming_difficulty():<8.2f} {self.team:<15} "
+            f"{self.upcoming_difficulty():<8.1f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{self.news}"
         )
@@ -164,6 +164,9 @@ class Squad:
         # "sscore -> "schedule score"
         return helpers.sscore(self.players, n=n)
 
+    def tsscore(self, n: int = conf.lookahead) -> float:
+        return helpers.tsscore(self.players)
+
     def __iter__(self):
         yield from self.players
 
@@ -173,8 +176,8 @@ class Squad:
     def __str(self):
         pospri = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
         yield f"Price: {self.price()/10} Size: {len(self.players)}"
-        yield f"LxP: {self.LxP():.2f} SxP: {self.SxP():.2f} CxP: {self.CxP():.2f}"
-        yield f"Schedule score: {self.sscore()} Team score: {self.tscore()} Cmb: {(self.sscore()**2 + self.tscore()**2)**0.5:.2f}"
+        yield f"LxP: {self.LxP():.1f} SxP: {self.SxP():.1f} CxP: {self.CxP():.1f}"
+        yield f"Schedule score: {self.sscore()} Team score: {self.tscore()} TSscore: {self.tsscore():.2f}"
         yield (
             "BIS  xP     Price  TP   UD       Team            Position  Player"
             + " " * 15

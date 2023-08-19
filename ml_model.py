@@ -19,24 +19,27 @@ if conf.debug:
 
 
 class Net(torch.nn.Module):
-    def __init__(self, sensors: int, rnn_hidden: int = 8) -> None:
+    def __init__(self, sensors: int, rnn_hidden: int = 16) -> None:
         super().__init__()
         self.rrn_hidden = rnn_hidden
         self.num_layers = 1
         self.sensors = sensors
-        self.dropout = torch.nn.Dropout(0.2)
-        self.rnn = torch.nn.GRU(
+        self.dropout = torch.nn.Dropout(0.25)
+        self.dec = torch.nn.Sequential(
+            torch.nn.Linear(
+                in_features=rnn_hidden,
+                out_features=rnn_hidden,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Linear(
+                in_features=rnn_hidden,
+                out_features=1,
+            ),
+        )
+        self.enc = torch.nn.GRU(
             input_size=sensors,
             hidden_size=rnn_hidden,
             batch_first=True,
-        )
-        self.lineara = torch.nn.Linear(
-            in_features=rnn_hidden,
-            out_features=rnn_hidden,
-        )
-        self.linearb = torch.nn.Linear(
-            in_features=rnn_hidden,
-            out_features=1,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -46,8 +49,8 @@ class Net(torch.nn.Module):
             batch_size,
             self.rrn_hidden,
         ).requires_grad_()
-        _, h_final = self.rnn(x, h_init)
-        return self.linearb(self.lineara(self.dropout(h_final))).flatten()
+        _, h_final = self.enc(x, h_init)
+        return self.dec(self.dropout(h_final)).flatten()
 
 
 def normalization(v: float, s: "database.SampleSummay") -> float:
@@ -142,7 +145,9 @@ def samples(
     assert isinstance(back, int) and back > 0
     train = [f for f in fixtures if not f.upcoming][-back:]
 
-    assert len(train) >= backtrace
+    if len(train) < backtrace:
+        raise ValueError("To few samples.")
+
     targets = list[float]()
     coefficients = list[tuple[tuple[float, ...], ...]]()
 
@@ -153,6 +158,7 @@ def samples(
         assert target.points is not None
         targets.append(target.points)
 
+    coefficients, targets = coefficients * 100, targets * 100
     return coefficients, targets
 
 
@@ -166,7 +172,7 @@ def train(
 
     loss_function = torch.nn.MSELoss()
     net = Net(ds[0][0].shape[-1])
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 
     for _ in range(epochs):
         for x, y in loader:
@@ -249,6 +255,12 @@ def main():
     )
 
     parser.add_argument(
+        "--epochs",
+        type=int,
+        default=5,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
         "--lr",
         type=float,
         default=0.01,
@@ -257,13 +269,7 @@ def main():
     parser.add_argument(
         "--min-mtm",
         type=int,
-        default=30,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=500,
+        default=0,
         help="(default: %(default)s)",
     )
 
@@ -279,18 +285,20 @@ def main():
         unit_scale=True,
     ) as bar:
         for player in players:
-            bar.update(1)
-            if len([f for f in player.fixutres if not f.upcoming]) < 3:
-                print(f"To few historic fixutres: {player.name}", flush=True)
-                continue
-            m = train(player, epochs=args.epochs, lr=args.lr)
-            save(player, m)
-            bar.write(
-                f"{xP(player):<6.2f} "
-                + f"{player.name} ("
-                + f"{player.team} - "
-                + f"{player.next_opponent})"
-            )
+            try:
+                m = train(player, epochs=args.epochs, lr=args.lr)
+            except ValueError as e:
+                bar.write(f"Skipped due {player.name} to: {e}")
+            else:
+                save(player, m)
+                bar.write(
+                    f"{xP(player):<6.1f} "
+                    + f"{player.name} ("
+                    + f"{player.team} - "
+                    + f"{player.next_opponent})"
+                )
+            finally:
+                bar.update(1)
 
 
 if __name__ == "__main__":

@@ -101,10 +101,10 @@ def past_team_lookup(tid: int, session: str) -> str:
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     urls = (
-        # (
-        #     "2023-24",
-        #     ""
-        # ),
+        (
+            "2023-24",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
+        ),
         (
             "2022-23",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",

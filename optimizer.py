@@ -177,7 +177,10 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
                             sequence += 1
-                            inv = 1 / (1 + helpers.yarr(squad))
+                            inv = round(
+                                1 / (1 + helpers.tsscore(squad)), 3
+                            )  # Need at least 3 deci.
+                            oxp = round(oxp, 1)
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
                                     best_squads,
@@ -228,6 +231,8 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    args = parser.parse_args()
+
     parser.add_argument(
         "--budget-lower",
         type=int,
@@ -264,6 +269,12 @@ def main():
         help="(default: %(default)s)",
     )
     parser.add_argument(
+        "--max-players-per-team",
+        type=int,
+        default=3,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
         "--min-mtm",
         type=float,
         default=0.0,
@@ -292,14 +303,6 @@ def main():
         default=0,
         help="(default: %(default)s)",
     )
-    parser.add_argument(
-        "--max-players-per-team",
-        type=int,
-        default=3,
-        help="(default: %(default)s)",
-    )
-
-    args = parser.parse_args()
 
     pool = [p for p in fetch.players() if p.xP is not None]
     pool = [p for p in pool if p.mtm() >= args.min_mtm and p.xP >= args.min_xp]
@@ -373,19 +376,26 @@ def main():
 
     mincxp = min(s.CxP() for s in squads)
     maxxcp = max(s.CxP() for s in squads)
-    minss = squads[-1].sscore()
-    maxss = squads[0].sscore()
+    minss = min(s.sscore() for s in squads)
+    maxss = max(s.sscore() for s in squads)
+    mints = min(s.tsscore() for s in squads)
+    maxts = max(s.tsscore() for s in squads)
 
     print("")
     print(
-        f"Min CxP: {mincxp:.2f}",
-        f"Max CxP: {maxxcp:.2f}",
-        f"Max-Min CxP: {(maxxcp-mincxp):.2f}",
+        f"Min CxP: {mincxp:.1f}",
+        f"Max CxP: {maxxcp:.1f}",
+        f"Max-Min CxP: {(maxxcp-mincxp):.1f}",
     )
     print(
         f"Min ss: {minss:d}",
         f"Max ss: {maxss:d}",
         f"Max-Min ss: {(maxss-minss):d}",
+    )
+    print(
+        f"Min ts: {mints:.2f}",
+        f"Max ts: {maxts:.2f}",
+        f"Max-Min ts: {(maxts-mints):.2f}",
     )
 
 

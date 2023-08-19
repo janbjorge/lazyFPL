@@ -81,5 +81,5 @@ def tcnt(lineup: T.Sequence["structures.Player"]) -> int:
     return sum(v - 1 for v in collections.Counter(p.team for p in lineup).values()) * 2
 
 
-def yarr(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> float:
+def tsscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> float:
     return (tcnt(lineup) ** 2 + sscore(lineup, n=n) ** 2) ** 0.5

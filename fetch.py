@@ -155,5 +155,5 @@ if __name__ == "__main__":
                     else f"{p.team} vs. {f.opponent}"
                 )
                 print(
-                    f"  {vs:<30} Points: {f.points} Minutes: {f.minutes} Diff: {f.relative.mean:.2f}"
+                    f"  {vs:<30} Points: {f.points} Minutes: {f.minutes} Diff: {f.relative.mean:.1f}"
                 )
