@@ -92,7 +92,7 @@ if __name__ == "__main__":
     for player, values in sorted(
         player_xp.items(),
         key=lambda x: (x[0].xP or 0) / (key(x[1])),
-    )[-50:]:
+    )[-10:]:
         if player.xP:
             print(
                 f"{player.webname:<20} {player.xP:<6.2f} {key(values):<6.2f} {(player.xP or 0)/(key(values)):<6.2f}"
