@@ -88,6 +88,14 @@ def transfer(
         for n, squad_cost in transfer_in.items()
     }
 
+    min_max_tranfer_in = {
+        n: (
+            min(c for _, c in transfer_in[n]),
+            max(c for _, c in transfer_in[n]),
+        )
+        for n in transfer_in
+    }
+
     bar.total = sum(
         len(transfer_in[n]) * len(squad_base[n]) for n in range(1, max_transfers + 1)
     )
@@ -96,6 +104,16 @@ def transfer(
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
+
+            min_c, max_c = min_max_tranfer_in[n]
+            assert min_c <= max_c
+            if max_c + base_cost < min_budget:
+                bar.update(len(transfer_in[n]))
+                continue
+            if min_c + base_cost > max_budget:
+                bar.update(len(transfer_in[n]))
+                continue
+
             for t_in, t_in_cost in transfer_in[n]:
                 cost = base_cost + t_in_cost
                 if cost > max_budget:
@@ -159,6 +177,12 @@ def main() -> None:
         help="(default: %(default)s)",
     )
     parser.add_argument(
+        "--max-candidates",
+        default=100,
+        type=int,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
         "--max-transfers",
         type=int,
         required=True,
@@ -177,14 +201,14 @@ def main() -> None:
         help="(default: %(default)s)",
     )
     parser.add_argument(
-        "--remove",
-        nargs="+",
-        default=[],
+        "--no-news",
+        action="store_true",
         help="(default: %(default)s)",
     )
     parser.add_argument(
-        "--no-news",
-        action="store_true",
+        "--remove",
+        nargs="+",
+        default=[],
         help="(default: %(default)s)",
     )
 
@@ -203,6 +227,7 @@ def main() -> None:
 
     print("\n>>>> Current team")
     team = fetch.my_team()
+    print(team)
 
     with tqdm(
         bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
@@ -214,7 +239,7 @@ def main() -> None:
             current=team.players,
             pool=pool,
             max_transfers=args.max_transfers,
-            max_candidates=100,
+            max_candidates=args.max_candidates,
             bar=bar,
             remove=[
                 p
