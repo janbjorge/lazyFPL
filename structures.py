@@ -69,6 +69,7 @@ class Fixture:
             overall = (
                 self.team_strength_overall_away - self.opponent_strength_overall_home
             ) / (self.team_strength_overall_away + self.opponent_strength_overall_home)
+
         return Difficulty(
             attack=attack,
             defence=defence,
@@ -107,7 +108,7 @@ class Player:
             return 0.0
 
     def upcoming_difficulty(self) -> float:
-        upcoming = [f for f in self.fixutres if f.upcoming][: conf._env.lookahead]
+        upcoming = [f for f in self.fixutres if f.upcoming][: conf.lookahead]
         return statistics.mean(f.relative.mean for f in upcoming)
 
     @property
@@ -129,7 +130,7 @@ class Player:
     def __str__(self):
         return (
             f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
-            f"{self.upcoming_difficulty():<8.1f} {self.team:<15} "
+            f"{self.upcoming_difficulty()*10:<8.1f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{self.news}"
         )
