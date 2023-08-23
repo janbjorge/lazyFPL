@@ -4,6 +4,7 @@ import functools
 import io
 import traceback
 import typing as T
+import urllib.parse as up
 
 import pydantic
 import pytz
@@ -64,28 +65,25 @@ def player_id_fuzzer(name: str) -> int:
     raise KeyError(name)
 
 
+def session_from_url(url: str) -> str:
+    return up.urlparse(url).path.split("/")[-3]
+
+
 @functools.cache
 def past_team_lists() -> dict[str, list["structures.Team"]]:
+
     urls = (
-        (
-            "2023-24",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
-        ),
-        (
-            "2022-23",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
-        ),
-        (
-            "2021-22",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
-        ),
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
     )
+
     return {
-        session: list(
+        session_from_url(url): list(
             structures.Team.parse_obj(t)
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
         )
-        for session, url in urls
+        for url in urls
     }
 
 
@@ -101,22 +99,13 @@ def past_team_lookup(tid: int, session: str) -> str:
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     urls = (
-        (
-            "2023-24",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
-        ),
-        (
-            "2022-23",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
-        ),
-        (
-            "2021-22",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-        ),
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
     )
     return {
-        session: list(csv.DictReader(io.StringIO(requests.get(url).text)))
-        for session, url in urls
+        session_from_url(url): list(csv.DictReader(io.StringIO(requests.get(url).text)))
+        for url in urls
     }
 
 
