@@ -66,7 +66,7 @@ def player_id_fuzzer(name: str) -> int:
 
 
 def session_from_url(url: str) -> str:
-    return up.urlparse(url).path.split("/")[-3]
+    return up.urlparse(url).path.split("/")[5]
 
 
 @functools.cache
@@ -88,7 +88,7 @@ def past_team_lists() -> dict[str, list["structures.Team"]]:
 
 
 @functools.cache
-def past_team_lookup(tid: int, session: str) -> str:
+def past_team_lookup(tid: int, session: database.SESSIONS) -> str:
     assert isinstance(tid, int)
     for team in past_team_lists()[session]:
         if team.id == tid:
@@ -196,9 +196,7 @@ def populate_teams() -> None:
             )
 
 
-def populate_players(
-    session: database.SESSIONS = T.get_args(database.SESSIONS)[-1],
-) -> None:
+def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> None:
     sql = """
         INSERT INTO player(
             webname,

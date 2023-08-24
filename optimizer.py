@@ -231,8 +231,6 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    args = parser.parse_args()
-
     parser.add_argument(
         "--budget-lower",
         type=int,
@@ -303,6 +301,8 @@ def main():
         default=0,
         help="(default: %(default)s)",
     )
+
+    args = parser.parse_args()
 
     pool = [p for p in fetch.players() if p.xP is not None]
     pool = [p for p in pool if p.mtm() >= args.min_mtm and p.xP >= args.min_xp]

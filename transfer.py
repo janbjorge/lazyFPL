@@ -215,11 +215,19 @@ def main() -> None:
     args = parser.parse_args()
 
     pool = [p for p in fetch.players() if p.xP is not None]
-    pool = [p for p in pool if p.webname not in args.exclude]
-    pool = [p for p in pool if p.team not in args.exclude]
-    pool = [p for p in pool if p.xP >= args.min_xp]
-    pool = [p for p in pool if p.mtm() >= args.min_mtm]
-    pool = [p for p in pool if args.no_news and not bool(p.news)]
+
+    if args.exclude:
+        pool = [p for p in pool if p.webname not in args.exclude]
+        pool = [p for p in pool if p.team not in args.exclude]
+
+    if args.min_xp > 0:
+        pool = [p for p in pool if p.xP >= args.min_xp]
+
+    if args.min_mtm > 0:
+        pool = [p for p in pool if p.mtm() >= args.min_mtm]
+
+    if args.no_news:
+        pool = [p for p in pool if not p.news]
 
     pool = sorted(list(pool), key=lambda p: p.xP or 0)
     print(">>> Pool")

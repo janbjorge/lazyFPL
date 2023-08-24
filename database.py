@@ -16,9 +16,21 @@ POSITIONS = T.Literal["GKP", "DEF", "MID", "FWD"]
 
 
 @dataclasses.dataclass(frozen=True)
-class SampleSummay:
+class SampleSummary:
     mean: float
+    std: float
     variance: float
+
+    @staticmethod
+    def fromiter(values: T.Iterable[float]) -> "SampleSummary":
+        return SampleSummary(
+            mean=statistics.mean(values),
+            std=statistics.stdev(values),
+            variance=statistics.variance(values),
+        )
+
+    def normalize(self, value: float) -> float:
+        return (value - self.mean) / self.variance
 
 
 class Game(pydantic.BaseModel):
@@ -165,7 +177,7 @@ def fetch_model(player_id: int) -> bytes:
 
 
 @functools.cache
-def points() -> SampleSummay:
+def points() -> SampleSummary:
     p = [
         row["points"]
         for row in execute(
@@ -179,14 +191,11 @@ def points() -> SampleSummay:
     """
         )
     ]
-    return SampleSummay(
-        mean=statistics.mean(p),
-        variance=statistics.variance(p),
-    )
+    return SampleSummary.fromiter(p)
 
 
 @functools.cache
-def strengths() -> dict[str, SampleSummay]:
+def strengths() -> dict[str, SampleSummary]:
     rows = execute(
         """
         SELECT
@@ -204,10 +213,5 @@ def strengths() -> dict[str, SampleSummay]:
     for row in rows:
         for k, v in row.items():
             samples[k].append(v)
-    return {
-        k: SampleSummay(
-            mean=statistics.mean(v),
-            variance=statistics.variance(v),
-        )
-        for k, v in samples.items()
-    }
+
+    return {k: SampleSummary.fromiter(v) for k, v in samples.items()}

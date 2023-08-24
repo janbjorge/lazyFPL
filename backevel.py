@@ -1,7 +1,6 @@
-import contextlib
 import dataclasses
 import statistics
-import sys
+import traceback
 import typing
 
 import numpy as np
@@ -22,7 +21,7 @@ def backeval(
     player: structures.Player,
     lookahead: int = 1,
     backtrace: int = 3,
-    backstep: int = 10,
+    backstep: int = 25,
 ) -> typing.Iterator[PredictionOutcome]:
     with torch.no_grad():
         net = ml_model.load(player)
@@ -38,7 +37,10 @@ def backeval(
                 break
             inf = np.expand_dims(
                 np.stack(
-                    [np.array(x, dtype=np.float32) for x in inference],
+                    [
+                        np.array(dataclasses.astuple(x), dtype=np.float32)
+                        for x in inference
+                    ],
                     axis=0,
                 ).astype(np.float32),
                 axis=0,
@@ -53,8 +55,11 @@ def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]
 
     rv = dict[structures.Player, tuple[PredictionOutcome, ...]]()
     for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
-        with contextlib.suppress(ValueError):
-            rv[player] = tuple(backeval(player))
+        if player.xP and player.xP > 0 and player.mtm() > 30:
+            try:
+                rv[player] = tuple(backeval(player))
+            except ValueError as e:
+                traceback.print_exception(e)
     return rv
 
 
@@ -87,7 +92,7 @@ if __name__ == "__main__":
     print()
 
     def key(values: tuple[PredictionOutcome, ...]) -> float:
-        return statistics.mean((v.prediceted - v.truth) ** 2 for v in values) ** 0.5
+        return statistics.mean((v.prediceted - v.truth) ** 2 for v in values) ** 0.5 + 1
 
     for player, values in sorted(
         player_xp.items(),
