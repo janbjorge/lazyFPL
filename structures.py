@@ -132,6 +132,7 @@ class Player:
             f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty()*10:<8.1f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
+            f"{' - '.join(self.upcoming_opponents()[:conf.lookahead])}"
             f"{self.news}"
         )
 
@@ -182,6 +183,8 @@ class Squad:
         yield (
             "BIS  xP     Price  TP   UD       Team            Position  Player"
             + " " * 15
+            + "Upcoming"
+            + " " * 30
             + "News"
         )
         for _, players in itertools.groupby(
@@ -192,7 +195,6 @@ class Squad:
             ),
             key=lambda x: x.position,
         ):
-            yield ""
             for player in players:
                 yield ("X    " if player in self.best_lineup() else "     ") + str(
                     player

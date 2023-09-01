@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import functools
 import itertools
@@ -10,6 +11,17 @@ import conf
 import database
 import ml_model
 import structures
+
+
+@dataclasses.dataclass(frozen=True)
+class Persona:
+    first: str
+    second: str
+    webname: str
+
+    @property
+    def combined(self) -> str:
+        return " ".join((self.first, self.second))
 
 
 @functools.cache
@@ -47,11 +59,15 @@ def next_deadline() -> datetime.timedelta:
 
 
 @functools.cache
-def player_name(pid: int) -> str:
+def person(pid: int) -> Persona:
     for element in bootstrap()["elements"]:
         if element["id"] == pid:
-            return f'{element["first_name"]} {element["second_name"]}'
-    raise ValueError(f"No player named: {pid}")
+            return Persona(
+                first=element["first_name"],
+                second=element["second_name"],
+                webname=element["web_name"],
+            )
+    raise ValueError(f"No player: {pid}")
 
 
 @functools.cache
@@ -121,20 +137,22 @@ def players() -> list["structures.Player"]:
 
 
 @functools.cache
-def picks(team_id: str) -> dict:
+def picks() -> list[dict]:
+    if not conf.teamid or not conf.profile:
+        raise RuntimeError(
+            "Env. FPL-teamid and FPL-cookie/profile must be set. FPL-team id "
+            "from URL and cookie 'pl_profile' from 'application' in chrome."
+        )
+
     return requests.get(
-        f"https://fantasy.premierleague.com/api/entry/{team_id}/event/{current_gw()}/picks/",
-        timeout=10,
+        f"https://fantasy.premierleague.com/api/my-team/{conf.teamid}/",
+        cookies={"pl_profile": conf.profile},
     ).json()["picks"]
 
 
-@functools.cache
-def my_team(
-    team_id: str = conf.teamid,
-) -> structures.Squad:
-    assert team_id
-    names = set(player_name(pick["element"]) for pick in picks(team_id))
-    return structures.Squad([p for p in players() if p.name in names])
+def my_team() -> structures.Squad:
+    webnames = {person(pick["element"]).webname for pick in picks()}
+    return structures.Squad([p for p in players() if p.webname in webnames])
 
 
 if __name__ == "__main__":
