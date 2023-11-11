@@ -115,7 +115,7 @@ def games() -> list[Game]:
     """
     )
 
-    return [Game.parse_obj(row) for row in rows]
+    return [Game.model_validate(row) for row in rows]
 
 
 def price(pid: int) -> int:

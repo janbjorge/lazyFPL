@@ -45,7 +45,6 @@ def transfer(
     max_candidates: int,
     bar: tqdm,
 ):
-
     max_budget = helpers.squad_price(current)
     min_budget = max_budget * 0.8
     candidates = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()
@@ -104,7 +103,6 @@ def transfer(
 
     for n in range(1, max_transfers + 1):
         for base, base_cost in squad_base[n]:
-
             min_c, max_c = min_max_tranfer_in[n]
             assert min_c <= max_c
             if max_c + base_cost < min_budget:
@@ -159,7 +157,6 @@ def transfer(
 
 
 def main() -> None:
-
     parser = argparse.ArgumentParser(
         prog="Transfer picker.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

@@ -71,7 +71,6 @@ def session_from_url(url: str) -> str:
 
 @functools.cache
 def past_team_lists() -> dict[str, list["structures.Team"]]:
-
     urls = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
@@ -80,7 +79,7 @@ def past_team_lists() -> dict[str, list["structures.Team"]]:
 
     return {
         session_from_url(url): list(
-            structures.Team.parse_obj(t)
+            structures.Team.model_validate(t)
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
         )
         for url in urls
@@ -264,7 +263,7 @@ def populate_games() -> None:
             game.pop(None, None)
 
             try:
-                historic = structures.HistoricGame.parse_obj(game)
+                historic = structures.HistoricGame.model_validate(game)
             except pydantic.ValidationError as e:
                 if conf.debug:
                     traceback.print_exception(e)
@@ -328,7 +327,7 @@ def populate_games() -> None:
         team = upcoming_team_id_to_name(ele["team"])
         for game in summary(ele["id"])["fixtures"]:
             try:
-                upcoming = structures.UpcommingGame.parse_obj(game)
+                upcoming = structures.UpcommingGame.model_validate(game)
             except pydantic.ValidationError as e:
                 if conf.debug:
                     traceback.print_exception(e)

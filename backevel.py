@@ -52,7 +52,6 @@ def backeval(
 
 
 def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]:
-
     rv = dict[structures.Player, tuple[PredictionOutcome, ...]]()
     for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
         if player.xP and player.xP > 0 and player.mtm() > 30:
@@ -64,7 +63,6 @@ def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]
 
 
 if __name__ == "__main__":
-
     player_xp = players_backeval()
 
     for player, ev in player_xp.items():

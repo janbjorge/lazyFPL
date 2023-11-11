@@ -247,7 +247,7 @@ def xP(
             inference.append(
                 features(
                     structures.Fixture(
-                        **(dataclasses.asdict(nxt) | dict(points=points))
+                        **(dataclasses.asdict(nxt) | dict(points=points[0]))
                     )
                 )
             )

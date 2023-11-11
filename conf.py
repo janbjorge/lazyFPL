@@ -12,8 +12,8 @@ class _Env(pydantic.BaseModel):
     teamid: str = pydantic.Field(alias="FPL_TEAMID", default="4270770")
 
 
-backtrace: typing.Final = _Env.parse_obj(os.environ).backtrace
-debug: typing.Final = _Env.parse_obj(os.environ).debug
-lookahead: typing.Final = _Env.parse_obj(os.environ).lookahead
-profile: typing.Final = _Env.parse_obj(os.environ).profile
-teamid: typing.Final = _Env.parse_obj(os.environ).teamid
+backtrace: typing.Final = _Env.model_validate(os.environ).backtrace
+debug: typing.Final = _Env.model_validate(os.environ).debug
+lookahead: typing.Final = _Env.model_validate(os.environ).lookahead
+profile: typing.Final = _Env.model_validate(os.environ).profile
+teamid: typing.Final = _Env.model_validate(os.environ).teamid
