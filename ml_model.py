@@ -1,5 +1,7 @@
 import argparse
 import dataclasses
+import itertools
+import math
 import pickle
 import traceback
 import typing
@@ -24,6 +26,7 @@ if conf.debug:
 class NormalizedFeatures:
     at_home: float
     points: float
+    minutes: float
     opponent_strength_attack_away: float
     opponent_strength_attack_home: float
     opponent_strength_defence_away: float
@@ -45,10 +48,14 @@ class FeatureBundle:
 
 
 class Net(torch.nn.Module):
-    def __init__(self, nfeature: int, rnn_hidden: int = 16) -> None:
+    def __init__(
+        self,
+        nfeature: int,
+        rnn_hidden: int = 16,
+    ) -> None:
         super().__init__()
-        self.rrn_hidden = rnn_hidden
         self.nfeature = nfeature
+        self.rnn_hidden = rnn_hidden
         self.enc = torch.nn.GRU(
             input_size=nfeature,
             hidden_size=rnn_hidden,
@@ -57,35 +64,24 @@ class Net(torch.nn.Module):
         self.dec = torch.nn.Sequential(
             torch.nn.Linear(
                 in_features=rnn_hidden,
-                out_features=rnn_hidden,
-            ),
-            torch.nn.ELU(),
-            torch.nn.Dropout(),
-            torch.nn.Linear(
-                in_features=rnn_hidden,
                 out_features=1,
             ),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        batch_size = x.shape[0]
-        h_init = torch.randn(
-            1,
-            batch_size,
-            self.rrn_hidden,
-            requires_grad=True,
-        )
-        _, h_final = self.enc(x, h_init)
-        return self.dec(h_final).flatten()
+        _, h_final = self.enc(x)
+        return self.dec(h_final[-1]).view(-1)
 
 
 def features(f: "structures.Fixture") -> NormalizedFeatures:
     assert f.points is not None
     p_scale = database.points()
     s_scale = database.strengths()
+    m_scale = database.minutes()
     return NormalizedFeatures(
         at_home=(f.at_home - 0.5) / 0.5,
         points=p_scale.normalize(f.points),
+        minutes=m_scale.normalize(f.minutes or 0),
         opponent_strength_attack_away=s_scale["strength_attack_away"].normalize(
             f.opponent_strength_attack_away,
         ),
@@ -139,7 +135,7 @@ class SequenceDataset(TorchDataset):
 def samples(
     fixtures: list["structures.Fixture"],
     backtrace: int = conf.backtrace,
-    upsample: int = 5,
+    upsample: int = 50,
 ) -> typing.Iterator[FeatureBundle]:
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
@@ -153,13 +149,21 @@ def samples(
     while len(train) > backtrace:
         target = train.pop(-1)
         assert target.points is not None
-        repat = (target.kickoff_time - min_ko) / (max_ko - min_ko) * upsample
-        repat = round(repat**2 + 1)
-        for _ in range(repat):
-            yield FeatureBundle(
+        repat = max(
+            (
+                math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
+                / (math.e**2)
+                * upsample
+            ),
+            1,
+        )
+        yield from itertools.repeat(
+            FeatureBundle(
                 features=tuple(features(f) for f in train[-backtrace:]),
                 target=target.points,
-            )
+            ),
+            round(repat),
+        )
 
 
 def train(
@@ -167,6 +171,7 @@ def train(
     epochs: int,
     lr: float,
     upsample: int,
+    batch_size: int,
 ):
     bundles = tuple(samples(player.fixutres, conf.backtrace, upsample=upsample))
     ds = SequenceDataset(
@@ -174,28 +179,31 @@ def train(
             tuple(tuple(dataclasses.astuple(f) for f in b.features) for b in bundles),
             dtype=torch.float32,
         ),
-        y=torch.tensor(tuple(b.target for b in bundles), dtype=torch.float32),
+        y=torch.tensor(
+            tuple(b.target for b in bundles),
+            dtype=torch.float32,
+        ),
     )
-    loader = TorchDataLoader(ds, batch_size=16, shuffle=True)
+    loader = TorchDataLoader(ds, batch_size=batch_size, shuffle=True)
 
-    loss_function = torch.nn.MSELoss()
+    loss_function = torch.nn.SmoothL1Loss()
     net = Net(ds[0][0].shape[-1])
     optimizer = torch.optim.AdamW(net.parameters(), lr=lr)
 
     for _ in range(epochs):
         for x, y in loader:
+            optimizer.zero_grad()
             output = net(x)
             assert output.shape == y.shape, (output.shape, y.shape)
             loss = loss_function(output, y)
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
     return net
 
 
-def load(player: "structures.Player") -> "Net":
+def load_model(player: "structures.Player") -> "Net":
     pid = populator.player_id_fuzzer(player.name)
-    if bts := database.fetch_model(pid):
+    if bts := database.load_model(pid):
         ms = pickle.loads(bts)
         n = Net(nfeature=ms["nfeature"], rnn_hidden=ms["rnn_hidden"])
         n.load_state_dict(ms["weights"])
@@ -203,12 +211,12 @@ def load(player: "structures.Player") -> "Net":
     raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
 
 
-def save(player: "structures.Player", m: "Net") -> None:
-    database.set_model(
+def save_model(player: "structures.Player", m: "Net") -> None:
+    database.save_model(
         populator.player_id_fuzzer(player.name),
         pickle.dumps(
             dict(
-                rnn_hidden=m.rrn_hidden,
+                rnn_hidden=m.rnn_hidden,
                 nfeature=m.nfeature,
                 weights=m.state_dict(),
             )
@@ -226,21 +234,24 @@ def xP(
     inference = [features(f) for f in fixutres if not f.upcoming][-backtrace:]
     upcoming = [f for f in fixutres if f.upcoming]
 
-    model = load(player)
+    model = load_model(player)
     model.eval()
     with torch.no_grad():
         for nxt in upcoming[:lookahead]:
-            inf = np.expand_dims(
-                np.stack(
-                    [
-                        np.array(dataclasses.astuple(x), dtype=np.float32)
-                        for x in inference
-                    ],
+            inf = torch.from_numpy(
+                np.expand_dims(
+                    np.stack(
+                        [
+                            np.array(dataclasses.astuple(x), dtype=np.float32)
+                            for x in inference
+                        ],
+                        axis=0,
+                    ).astype(np.float32),
                     axis=0,
-                ).astype(np.float32),
-                axis=0,
+                )
             )
-            points = model(torch.from_numpy(inf)).detach().numpy()
+
+            points = model(inf).detach().numpy()
             assert points.shape == (1,), points.shape
             expected.extend(points)
             inference.pop(0)
@@ -267,7 +278,7 @@ def main():
     parser.add_argument(
         "--epochs",
         type=int,
-        default=50,
+        default=5,
         help="(default: %(default)s)",
     )
     parser.add_argument(
@@ -285,7 +296,13 @@ def main():
     parser.add_argument(
         "--upsample",
         type=int,
-        default=5,
+        default=50,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=32,
         help="(default: %(default)s)",
     )
 
@@ -307,13 +324,17 @@ def main():
                     epochs=args.epochs,
                     lr=args.lr,
                     upsample=args.upsample,
+                    batch_size=args.batch_size,
                 )
-            except ValueError:
-                pass
+            except (
+                IndexError,
+                ValueError,
+            ):
+                ...
             except Exception as e:
                 bar.write("".join(traceback.format_exception(e)))
             else:
-                save(player, m)
+                save_model(player, m)
                 bar.write(
                     f"{xP(player):<6.1f} "
                     + f"{player.name} ("

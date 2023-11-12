@@ -24,7 +24,7 @@ def backeval(
     backstep: int = 25,
 ) -> typing.Iterator[PredictionOutcome]:
     with torch.no_grad():
-        net = ml_model.load(player)
+        net = ml_model.load_model(player)
         net.eval()
         for n in range(backstep):
             fixutres = [f for f in player.fixutres if not f.upcoming][
@@ -46,9 +46,12 @@ def backeval(
                 axis=0,
             )
             xP = net(torch.from_numpy(inf)).detach().numpy()[0]
-            if xP is None or next_fixture.points is None:
-                continue
-            yield PredictionOutcome(prediceted=xP, truth=next_fixture.points)
+            assert xP is not None
+            assert next_fixture.points is not None
+            yield PredictionOutcome(
+                prediceted=xP,
+                truth=next_fixture.points,
+            )
 
 
 def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]:
@@ -79,13 +82,13 @@ if __name__ == "__main__":
     print(
         f"AM : {statistics.mean((abs(v.prediceted - v.truth)) for values  in player_xp.values() for v in values):.1f}"
     )
-    for n in range(1, 11):
+    for n in range(1, 6):
         errs = (
-            abs(v.prediceted - v.truth) < n
+            1 if abs(v.prediceted - v.truth) <= n else 0
             for values in player_xp.values()
             for v in values
         )
-        print(f"RC{n}: {statistics.mean(map(int, errs))*100:.1f}")
+        print(f"RC{n}: {statistics.mean(errs)*100:.1f}")
 
     print()
 

@@ -148,7 +148,7 @@ def webname(pid: int) -> str:
     return rows[0]["webname"]
 
 
-def set_model(player_id: int, model: bytes) -> None:
+def save_model(player_id: int, model: bytes) -> None:
     execute(
         """
         UPDATE
@@ -162,7 +162,7 @@ def set_model(player_id: int, model: bytes) -> None:
     )
 
 
-def fetch_model(player_id: int) -> bytes:
+def load_model(player_id: int) -> bytes:
     return execute(
         """
         SELECT
@@ -188,6 +188,24 @@ def points() -> SampleSummary:
             game
         WHERE
             points is not null
+    """
+        )
+    ]
+    return SampleSummary.fromiter(p)
+
+
+@functools.cache
+def minutes() -> SampleSummary:
+    p = [
+        row["minutes"]
+        for row in execute(
+            """
+        SELECT
+            minutes
+        FROM
+            game
+        WHERE
+            minutes is not null
     """
         )
     ]
