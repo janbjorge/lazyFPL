@@ -70,8 +70,7 @@ class Net(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _, h_final = self.enc(x)
-        return self.dec(h_final[-1]).view(-1)
-
+        return self.dec(h_final.squeeze()).view(-1)
 
 def features(f: "structures.Fixture") -> NormalizedFeatures:
     assert f.points is not None
