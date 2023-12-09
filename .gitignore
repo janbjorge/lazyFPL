@@ -137,3 +137,4 @@ dmypy.json
 
 # Player database
 *.sqlite3
+.DS_Store
