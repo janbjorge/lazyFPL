@@ -1,4 +1,3 @@
-import collections
 import dataclasses
 import datetime
 import functools
@@ -33,6 +32,16 @@ class SampleSummary:
         return (value - self.mean) / self.variance
 
 
+@dataclasses.dataclass(frozen=True)
+class Strenghts:
+    strength_attack_away: SampleSummary
+    strength_attack_home: SampleSummary
+    strength_defence_away: SampleSummary
+    strength_defence_home: SampleSummary
+    strength_overall_away: SampleSummary
+    strength_overall_home: SampleSummary
+
+
 class Game(pydantic.BaseModel):
     is_home: bool
     kickoff: datetime.datetime
@@ -62,7 +71,7 @@ class Game(pydantic.BaseModel):
 
 
 def dbfile(
-    file: str = os.environ.get("FPL_DATABASE", ".database.sqlite3")
+    file: str = os.environ.get("FPL_DATABASE", ".database.sqlite3"),
 ) -> pathlib.Path:
     return pathlib.Path(file)
 
@@ -213,7 +222,7 @@ def minutes() -> SampleSummary:
 
 
 @functools.cache
-def strengths() -> dict[str, SampleSummary]:
+def strengths() -> Strenghts:
     rows = execute(
         """
         SELECT
@@ -227,9 +236,23 @@ def strengths() -> dict[str, SampleSummary]:
             team
     """
     )
-    samples = collections.defaultdict(list)
-    for row in rows:
-        for k, v in row.items():
-            samples[k].append(v)
-
-    return {k: SampleSummary.fromiter(v) for k, v in samples.items()}
+    return Strenghts(
+        strength_attack_away=SampleSummary.fromiter(
+            [r["strength_attack_away"] for r in rows]
+        ),
+        strength_attack_home=SampleSummary.fromiter(
+            [r["strength_attack_home"] for r in rows]
+        ),
+        strength_defence_away=SampleSummary.fromiter(
+            [r["strength_defence_away"] for r in rows]
+        ),
+        strength_defence_home=SampleSummary.fromiter(
+            [r["strength_defence_home"] for r in rows]
+        ),
+        strength_overall_away=SampleSummary.fromiter(
+            [r["strength_overall_away"] for r in rows]
+        ),
+        strength_overall_home=SampleSummary.fromiter(
+            [r["strength_overall_home"] for r in rows]
+        ),
+    )

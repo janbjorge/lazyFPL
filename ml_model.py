@@ -72,6 +72,7 @@ class Net(torch.nn.Module):
         _, h_final = self.enc(x)
         return self.dec(h_final.squeeze()).view(-1)
 
+
 def features(f: "structures.Fixture") -> NormalizedFeatures:
     assert f.points is not None
     p_scale = database.points()
@@ -81,40 +82,40 @@ def features(f: "structures.Fixture") -> NormalizedFeatures:
         at_home=(f.at_home - 0.5) / 0.5,
         points=p_scale.normalize(f.points),
         minutes=m_scale.normalize(f.minutes or 0),
-        opponent_strength_attack_away=s_scale["strength_attack_away"].normalize(
+        opponent_strength_attack_away=s_scale.strength_attack_away.normalize(
             f.opponent_strength_attack_away,
         ),
-        opponent_strength_attack_home=s_scale["strength_attack_home"].normalize(
+        opponent_strength_attack_home=s_scale.strength_attack_home.normalize(
             f.opponent_strength_attack_home,
         ),
-        opponent_strength_defence_away=s_scale["strength_defence_away"].normalize(
+        opponent_strength_defence_away=s_scale.strength_defence_away.normalize(
             f.opponent_strength_defence_away,
         ),
-        opponent_strength_defence_home=s_scale["strength_defence_home"].normalize(
+        opponent_strength_defence_home=s_scale.strength_defence_home.normalize(
             f.opponent_strength_defence_home,
         ),
-        opponent_strength_overall_away=s_scale["strength_overall_away"].normalize(
+        opponent_strength_overall_away=s_scale.strength_overall_away.normalize(
             f.opponent_strength_overall_away,
         ),
-        opponent_strength_overall_home=s_scale["strength_overall_home"].normalize(
+        opponent_strength_overall_home=s_scale.strength_overall_home.normalize(
             f.opponent_strength_overall_home,
         ),
-        team_strength_attack_away=s_scale["strength_attack_away"].normalize(
+        team_strength_attack_away=s_scale.strength_attack_away.normalize(
             f.team_strength_attack_away,
         ),
-        team_strength_attack_home=s_scale["strength_attack_home"].normalize(
+        team_strength_attack_home=s_scale.strength_attack_home.normalize(
             f.team_strength_attack_home,
         ),
-        team_strength_defence_away=s_scale["strength_defence_away"].normalize(
+        team_strength_defence_away=s_scale.strength_defence_away.normalize(
             f.team_strength_defence_away,
         ),
-        team_strength_defence_home=s_scale["strength_defence_home"].normalize(
+        team_strength_defence_home=s_scale.strength_defence_home.normalize(
             f.team_strength_defence_home,
         ),
-        team_strength_overall_away=s_scale["strength_overall_away"].normalize(
+        team_strength_overall_away=s_scale.strength_overall_away.normalize(
             f.team_strength_overall_away,
         ),
-        team_strength_overall_home=s_scale["strength_overall_home"].normalize(
+        team_strength_overall_home=s_scale.strength_overall_home.normalize(
             f.team_strength_overall_home,
         ),
     )
@@ -133,8 +134,8 @@ class SequenceDataset(TorchDataset):
 
 def samples(
     fixtures: list["structures.Fixture"],
+    upsample: int,
     backtrace: int = conf.backtrace,
-    upsample: int = 50,
 ) -> typing.Iterator[FeatureBundle]:
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
@@ -172,7 +173,7 @@ def train(
     upsample: int,
     batch_size: int,
 ):
-    bundles = tuple(samples(player.fixutres, conf.backtrace, upsample=upsample))
+    bundles = tuple(samples(player.fixutres, upsample, conf.backtrace))
     ds = SequenceDataset(
         x=torch.tensor(
             tuple(tuple(dataclasses.astuple(f) for f in b.features) for b in bundles),
@@ -295,13 +296,13 @@ def main():
     parser.add_argument(
         "--upsample",
         type=int,
-        default=50,
+        default=100,
         help="(default: %(default)s)",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=16,
         help="(default: %(default)s)",
     )
 

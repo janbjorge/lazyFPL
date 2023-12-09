@@ -3,7 +3,6 @@ import datetime
 import functools
 import io
 import traceback
-import typing as T
 import urllib.parse as up
 
 import pydantic
