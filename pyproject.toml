@@ -1,0 +1,68 @@
+[project]
+name = "lazyFPL"
+description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "JBL", email = "janbjorge@gmail.com" }]
+keywords = [
+    "fantasy premier league",
+    "FPL",
+    "data analysis",
+    "machine learning",
+    "team optimization",
+    "sports analytics",
+    "python",
+    "football data",
+    "soccer statistics",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python",
+    "Topic :: Games/Entertainment",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pydantic",
+    "tqdm",
+    "torch",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "ruff",
+]
+
+
+[tool.ruff]
+ignore = [
+    "C901",
+]
+select = [
+    "C",
+    "E",
+    "F",
+    "I",
+    "PIE",
+    "Q",
+    "RET",
+    "RSE",
+    "SIM",
+    "W",
+    # "C90",
+    # "NPY",
+    # "PD",
+    # "PL",
+]
+line-length = 88
+[tool.ruff.lint.isort]
+combine-as-imports = true
