@@ -1,10 +1,10 @@
-[project]
+[tool.poetry]
 name = "lazyFPL"
+version = "0.1.0"
 description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
+authors = ["JB Lovland <janbjorge@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [{ name = "JBL", email = "janbjorge@gmail.com" }]
 keywords = [
     "fantasy premier league",
     "FPL",
@@ -30,18 +30,24 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = [
-    "pydantic",
-    "tqdm",
-    "torch",
-]
 
-[project.optional-dependencies]
-dev = [
-    "mypy",
-    "ruff",
-]
+[tool.poetry.dependencies]
+python = "^3.11"
+torch = "^2.1.2"
+pydantic = "^2.5.2"
+tqdm = "^4.66.1"
+requests = "^2.31.0"
+numpy = "^1.26.2"
+python-dateutil = "^2.8.2"
+pytz = "^2023.3.post1"
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.8"
+mypy = "^1.7.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 ignore = [

@@ -7,10 +7,7 @@ import traceback
 import dateutil.parser
 import requests
 
-import conf
-import database
-import ml_model
-import structures
+from lazyfpl import conf, database, ml_model, structures
 
 
 @dataclasses.dataclass(frozen=True)
@@ -78,7 +75,7 @@ def players() -> list["structures.Player"]:
         sorted(database.games(), key=lambda x: (x.player, x.webname)),
         lambda x: (x.player, x.webname),
     ):
-        games = list(sorted(_games, key=lambda x: x.kickoff))
+        games = sorted(_games, key=lambda x: x.kickoff)
         fixtures = [
             structures.Fixture(
                 at_home=game.is_home,
@@ -173,5 +170,6 @@ if __name__ == "__main__":
                     else f"{p.team} vs. {f.opponent}"
                 )
                 print(
-                    f"  {vs:<30} Points: {f.points} Minutes: {f.minutes} Diff: {f.relative.mean:.1f}"
+                    f"  {vs:<30} Points: {f.points} "
+                    "Minutes: {f.minutes} Diff: {f.relative.mean:.1f}"
                 )

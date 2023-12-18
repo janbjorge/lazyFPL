@@ -1,5 +1,6 @@
 import os
 import typing
+import pathlib
 
 import pydantic
 
@@ -27,9 +28,14 @@ class _Env(pydantic.BaseModel):
         alias="FPL_TEAMID",
         default="4270770",
     )
+    db: pathlib.Path = pydantic.Field(
+        alias="FPL_DATABASE",
+        default=pathlib.Path(".database.sqlite3"),
+    )
 
 
 backtrace: typing.Final = _Env.model_validate(os.environ).backtrace
+db: typing.Final = _Env.model_validate(os.environ).db
 debug: typing.Final = _Env.model_validate(os.environ).debug
 lookahead: typing.Final = _Env.model_validate(os.environ).lookahead
 profile: typing.Final = _Env.model_validate(os.environ).profile

@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import statistics
 import traceback
 import typing
@@ -6,22 +7,21 @@ import typing
 import numpy as np
 import torch
 
-import fetch
-import ml_model
-import structures
+from lazyfpl import fetch, ml_model, structures
 
 
 @dataclasses.dataclass(frozen=True)
 class PredictionOutcome:
     prediceted: float
     truth: float
+    kickoff: datetime.datetime
 
 
 def backeval(
     player: structures.Player,
     lookahead: int = 1,
     backtrace: int = 3,
-    backstep: int = 25,
+    backstep: int = 10,
 ) -> typing.Iterator[PredictionOutcome]:
     with torch.no_grad():
         net = ml_model.load_model(player)
@@ -51,6 +51,7 @@ def backeval(
             yield PredictionOutcome(
                 prediceted=xP,
                 truth=next_fixture.points,
+                kickoff=next_fixture.kickoff_time,
             )
 
 
@@ -70,18 +71,26 @@ if __name__ == "__main__":
 
     for player, ev in player_xp.items():
         print(f"\n{player.name}({player.webname}) - {player.position} - {player.team}")
-        for e in ev:
+        for e in sorted(ev, key=lambda x:x.kickoff):
             print(
-                f"  xP: {e.prediceted:<6.1f} TP: {e.truth:<6.1f} Err: {abs(e.prediceted - e.truth):<6.1f}"
+                f"  When: {e.kickoff.date()} xP: {e.prediceted:<6.1f} TP: {e.truth:<6.1f} "
+                f"Err: {abs(e.prediceted - e.truth):<6.1f}"
             )
 
     print()
-    print(
-        f"RMS: {statistics.mean((v.prediceted - v.truth)**2 for values in player_xp.values() for v in values)**0.5:.1f}"
+    rms = (
+        statistics.mean(
+            (v.prediceted - v.truth) ** 2
+            for values in player_xp.values()
+            for v in values
+        )
+        ** 0.5
     )
-    print(
-        f"AM : {statistics.mean((abs(v.prediceted - v.truth)) for values  in player_xp.values() for v in values):.1f}"
+    print(f"RMS: {rms:.1f}")
+    am = statistics.mean(
+        (abs(v.prediceted - v.truth)) for values in player_xp.values() for v in values
     )
+    print(f"AM : {am:.1f}")
     for n in range(1, 6):
         errs = (
             1 if abs(v.prediceted - v.truth) <= n else 0
@@ -101,5 +110,6 @@ if __name__ == "__main__":
     )[-10:]:
         if player.xP:
             print(
-                f"{player.webname:<20} {player.xP:<6.2f} {key(values):<6.2f} {(player.xP or 0)/(key(values)):<6.2f}"
+                f"{player.webname:<20} {player.xP:<6.2f} "
+                f"{key(values):<6.2f} {(player.xP or 0)/(key(values)):<6.2f}"
             )

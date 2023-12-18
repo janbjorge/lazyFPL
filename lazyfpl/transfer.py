@@ -3,12 +3,11 @@ import heapq
 import itertools
 import typing as T
 
-from tqdm.std import tqdm
-
 import constraints
 import fetch
 import helpers
 import structures
+from tqdm.std import tqdm
 
 
 def display(
@@ -23,12 +22,13 @@ def display(
     max_len_in_team = max(len(p.team) for p in transfers_in)
 
     max_len_out_name = max(len(p.webname) for p in transfers_out)
-    max_len_out_team = max(len(p.team) for p in transfers_out)
+    # max_len_out_team = max(len(p.team) for p in transfers_out)
 
     log.write("-" * 75)
     for o, i in zip(transfers_out, transfers_in):
         log.write(
-            f"{o.position}: {o.webname:<{max_len_out_name}} {o.team:<{max_len_out_team}} {o.xP:<5.1f}"
+            f"{o.position}: {o.webname:<{max_len_out_name}} "
+            "{o.team:<{max_len_out_team}} {o.xP:<5.1f}"
             "  -->>  "
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.1f}"
         )
@@ -226,7 +226,7 @@ def main() -> None:
     if args.no_news:
         pool = [p for p in pool if not p.news]
 
-    pool = sorted(list(pool), key=lambda p: p.xP or 0)
+    pool = sorted(pool, key=lambda p: p.xP or 0)
     print(">>> Pool")
     print(structures.Squad(pool))
 

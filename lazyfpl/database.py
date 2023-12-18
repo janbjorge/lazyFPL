@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 import dataclasses
 import datetime
 import functools
@@ -8,6 +9,8 @@ import statistics
 import typing as T
 
 import pydantic
+
+from lazyfpl import conf
 
 SESSIONS = T.Literal["2021-22", "2022-23", "2023-24"]
 CURRENT_SESSION = T.get_args(SESSIONS)[-1]
@@ -70,18 +73,12 @@ class Game(pydantic.BaseModel):
     opponent_trength_overall_away: int
 
 
-def dbfile(
-    file: str = os.environ.get("FPL_DATABASE", ".database.sqlite3"),
-) -> pathlib.Path:
-    return pathlib.Path(file)
-
-
 @functools.cache
-def connect(file: pathlib.Path = dbfile()) -> sqlite3.Connection:
+def connect(file: pathlib.Path = conf.db) -> sqlite3.Connection:
     return sqlite3.connect(file)
 
 
-def execute(sql: str, parameters: tuple = tuple()) -> list[dict]:
+def execute(sql: str, parameters: tuple = ()) -> list[dict]:
     with connect() as conn:
         cursor = conn.execute(sql, parameters)
         if desc := [x[0] for x in cursor.description or []]:
@@ -93,7 +90,7 @@ def execute(sql: str, parameters: tuple = tuple()) -> list[dict]:
 def games() -> list[Game]:
     rows = execute(
         """
-        select 
+        select
             is_home,
             kickoff,
             minutes,

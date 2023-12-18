@@ -6,9 +6,7 @@ import typing as T
 
 import pydantic
 
-import conf
-import database
-import helpers
+from lazyfpl import conf, database, helpers
 
 
 @dataclasses.dataclass(frozen=True)
@@ -132,7 +130,7 @@ class Player:
             f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty()*10:<8.1f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
-            f"{' - '.join(self.upcoming_opponents()[:conf.lookahead])}"
+            f"{' - '.join(self.upcoming_opponents()[:conf.lookahead])} "
             f"{self.news}"
         )
 
@@ -179,7 +177,10 @@ class Squad:
         pospri = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
         yield f"Price: {self.price()/10} Size: {len(self.players)}"
         yield f"LxP: {self.LxP():.1f} SxP: {self.SxP():.1f} CxP: {self.CxP():.1f}"
-        yield f"Schedule score: {self.sscore()} Team score: {self.tscore()} TSscore: {self.tsscore():.2f}"
+        yield (
+            f"Schedule score: {self.sscore()} Team score: {self.tscore()} "
+            f"TSscore: {self.tsscore():.2f}"
+        )
         yield (
             "BIS  xP     Price  TP   UD       Team            Position  Player"
             + " " * 15

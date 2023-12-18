@@ -12,11 +12,7 @@ from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.data import Dataset as TorchDataset
 from tqdm.std import tqdm
 
-import conf
-import database
-import fetch
-import populator
-import structures
+from lazyfpl import conf, database, fetch, populator, structures
 
 if conf.debug:
     torch.set_printoptions(threshold=10_000)
@@ -215,11 +211,11 @@ def save_model(player: "structures.Player", m: "Net") -> None:
     database.save_model(
         populator.player_id_fuzzer(player.name),
         pickle.dumps(
-            dict(
-                rnn_hidden=m.rnn_hidden,
-                nfeature=m.nfeature,
-                weights=m.state_dict(),
-            )
+            {
+                "rnn_hidden": m.rnn_hidden,
+                "nfeature": m.nfeature,
+                "weights": m.state_dict(),
+            }
         ),
     )
 
@@ -258,7 +254,7 @@ def xP(
             inference.append(
                 features(
                     structures.Fixture(
-                        **(dataclasses.asdict(nxt) | dict(points=points[0]))
+                        **(dataclasses.asdict(nxt) | {"points": points[0]})
                     )
                 )
             )
@@ -296,7 +292,7 @@ def main():
     parser.add_argument(
         "--upsample",
         type=int,
-        default=100,
+        default=25,
         help="(default: %(default)s)",
     )
     parser.add_argument(

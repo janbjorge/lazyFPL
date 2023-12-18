@@ -11,9 +11,7 @@ import requests
 from dateutil.parser import parse as dtparser
 from tqdm.std import tqdm
 
-import conf
-import database
-import structures
+from lazyfpl import conf, database, structures
 
 
 def now_tz_utc() -> datetime.datetime:
@@ -77,10 +75,10 @@ def past_team_lists() -> dict[str, list["structures.Team"]]:
     )
 
     return {
-        session_from_url(url): list(
+        session_from_url(url): [
             structures.Team.model_validate(t)
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
-        )
+        ]
         for url in urls
     }
 

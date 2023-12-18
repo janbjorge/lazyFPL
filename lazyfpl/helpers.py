@@ -1,8 +1,7 @@
 import collections
 import typing as T
 
-import conf
-import structures
+from lazyfpl import conf, structures
 
 
 def squad_price(lineup: T.Sequence["structures.Player"]) -> int:

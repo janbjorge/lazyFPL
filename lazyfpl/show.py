@@ -1,8 +1,7 @@
 import argparse
 import itertools
 
-import fetch
-import structures
+from lazyfpl import fetch, structures
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

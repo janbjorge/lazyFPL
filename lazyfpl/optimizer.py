@@ -4,12 +4,11 @@ import heapq
 import itertools
 import typing as T
 
-from tqdm.std import tqdm
-
 import constraints
 import fetch
 import helpers
 import structures
+from tqdm.std import tqdm
 
 
 def position_combinations(
@@ -42,7 +41,7 @@ def lineup(
     pool: list["structures.Player"],
     budget_lower: int = 900,
     budget_upper: int = 1_000,
-    include: T.Sequence["structures.Player"] = tuple(),
+    include: T.Sequence["structures.Player"] = (),
     n_squads: int = 1_000,
     max_players_per_team: int = 3,
     alpha: float = 0.8,
@@ -218,7 +217,7 @@ def position_price_candidates(
     ):
         toadd = []
         team = set[str]()
-        for player in sorted(list(players), key=lambda x: x.xP or 0, reverse=True):
+        for player in sorted(players, key=lambda x: x.xP or 0, reverse=True):
             if player.team not in team:
                 toadd.append(player)
                 team.add(player.team)
@@ -310,14 +309,12 @@ def main():
     if args.no_news:
         pool = [p for p in pool if not p.news]
 
-    player_names = set(p.webname.lower() for p in pool)
-    remove: set[str] = set(r.lower() for r in args.remove if r.lower() in player_names)
+    player_names = {p.webname.lower() for p in pool}
+    remove: set[str] = {r.lower() for r in args.remove if r.lower() in player_names}
     pool = [p for p in pool if p.webname.lower() not in remove]
 
-    team_names = set(p.team.lower() for p in pool)
-    remove_team: set[str] = set(
-        r.lower() for r in args.remove if r.lower() in team_names
-    )
+    team_names = {p.team.lower() for p in pool}
+    remove_team: set[str] = {r.lower() for r in args.remove if r.lower() in team_names}
     pool = [p for p in pool if p.team.lower() not in remove_team]
 
     if args.top_position_price:
@@ -331,13 +328,13 @@ def main():
         )
 
     include = list(
-        set(
+        {
             p
             for p in fetch.players()
             if p.webname in args.include
             or p.name in args.include
             or p.team in args.include
-        )
+        }
     )
     pool += include
 
