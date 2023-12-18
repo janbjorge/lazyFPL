@@ -62,7 +62,7 @@ def valid_squad(
 def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> int:
     # "sscore -> "schedule score"
     # counts players in the lineup who plays in same match.
-    # Ex. l'pool vs. man. city, and you team has Haaland and Salah as the only
+    # Ex. l'pool vs. man. city, and your team has Haaland and Salah as the only
     # players from the l'pool and city, the sscore is 2 since both play
     # the same match (assuming they start/play ofc.)
 
@@ -71,10 +71,7 @@ def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> 
         for i, nextopp in enumerate(player.upcoming_opponents()[:n]):
             per_gw[i].append((player.team, nextopp))
 
-    score = 0
-    for vs in per_gw.values():
-        score += sum(vs.count(x[::-1]) for x in set(vs))
-    return score
+    return sum(sum(vs.count(x[::-1]) for x in set(vs)) for vs in per_gw.values())
 
 
 def tcnt(lineup: T.Sequence["structures.Player"]) -> int:
