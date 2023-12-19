@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "lazyFPL"
-version = "0.1.0"
+name = "lazyfpl"
+version = "0.0.1"
 description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 authors = ["JB Lovland <janbjorge@gmail.com>"]
 license = "MIT"

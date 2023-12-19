@@ -4,31 +4,31 @@ This Python project is designed to analyze and optimize Fantasy Premier League (
 
 ## Modules Overview
 
-- `backevel.py`: Back evaluation of player performance.
-- `conf.py`: Configuration settings.
-- `constraints.py`: Team selection constraints.
-- `database.py`: Database interactions.
-- `fetch.py`: Data fetching from FPL API.
-- `ml_model.py`: Machine learning model for player performance prediction.
-- `optimizer.py`: Team selection optimization.
-- `populator.py`: Data population from external sources.
-- `structures.py`: Data structures definition.
-- `transfer.py`: Management of player transfers.
+- `lazyfpl/backevel.py`: Back evaluation of player performance.
+- `lazyfpl/conf.py`: Configuration settings.
+- `lazyfpl/constraints.py`: Team selection constraints.
+- `lazyfpl/database.py`: Database interactions.
+- `lazyfpl/fetch.py`: Data fetching from FPL API.
+- `lazyfpl/ml_model.py`: Machine learning model for player performance prediction.
+- `lazyfpl/optimizer.py`: Team selection optimization.
+- `lazyfpl/populator.py`: Data population from external sources.
+- `lazyfpl/structures.py`: Data structures definition.
+- `lazyfpl/transfer.py`: Management of player transfers.
 
 ## Basic Usage Examples
 
 ```bash
 # Builds local player database.
-python3 populator.py
+python3 -m lazyfpl.populator
 
 # Train ml-model (used to estiate expected points per player).
-python3 ml_model.p
+python3 -m lazyfpl.ml_model
 
 # Backeval the model (optional).
-python3 backevel.py
+python3 -m lazyfpl.backevel
 
 # Based on upcoming fixture thufness, team synergy and expected points (from ML-model)
 # show optimal team comparisons.
 # This will exclude player with news and below mean-minutes played 60
-python3 optimizer.py --no-news --min-mtm 60
+python3 -m lazyfpl.optimizer --no-news --min-mtm 60
 ```
