@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     for player, ev in player_xp.items():
         print(f"\n{player.name}({player.webname}) - {player.position} - {player.team}")
-        for e in sorted(ev, key=lambda x:x.kickoff):
+        for e in sorted(ev, key=lambda x: x.kickoff):
             print(
                 f"  When: {e.kickoff.date()} xP: {e.prediceted:<6.1f} TP: {e.truth:<6.1f} "
                 f"Err: {abs(e.prediceted - e.truth):<6.1f}"

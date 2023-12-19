@@ -1,7 +1,7 @@
 import collections as C
 import typing as T
 
-import structures
+from lazyfpl import structures
 
 
 def team_constraint(lineup: T.Sequence["structures.Player"], n: int) -> bool:

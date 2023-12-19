@@ -1,5 +1,6 @@
 import csv
 import datetime
+import argparse
 import functools
 import io
 import traceback
@@ -158,6 +159,12 @@ def initialize_database() -> None:
         );
     """
     )
+
+
+def nuke_database() -> None:
+    database.execute("""DROP TABLE game;""")
+    database.execute("""DROP TABLE player;""")
+    database.execute("""DROP TABLE team;""")
 
 
 def populate_teams() -> None:
@@ -372,8 +379,22 @@ def upcoming_position(name: str) -> database.POSITIONS:
     raise ValueError(f"No player named: {name}")
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(
+        prog="Populator",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--fresh", action="store_true")
+    parsed = parser.parse_args()
+
+    if parsed.fresh:
+        nuke_database()
+
     initialize_database()
     populate_teams()
     populate_players()
     populate_games()
+
+
+if __name__ == "__main__":
+    main()

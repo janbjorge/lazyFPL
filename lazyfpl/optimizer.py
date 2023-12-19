@@ -4,10 +4,7 @@ import heapq
 import itertools
 import typing as T
 
-import constraints
-import fetch
-import helpers
-import structures
+from lazyfpl import constraints, fetch, structures, helpers
 from tqdm.std import tqdm
 
 
@@ -42,7 +39,7 @@ def lineup(
     budget_lower: int = 900,
     budget_upper: int = 1_000,
     include: T.Sequence["structures.Player"] = (),
-    n_squads: int = 1_000,
+    n_squads: int = 100_000,
     max_players_per_team: int = 3,
     alpha: float = 0.8,
 ) -> list[structures.Squad]:
@@ -176,15 +173,11 @@ def lineup(
                             and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                         ):
                             sequence += 1
-                            inv = round(
-                                1 / (1 + helpers.tsscore(squad)), 3
-                            )  # Need at least 3 deci.
-                            oxp = round(oxp, 1)
                             if len(best_squads) >= n_squads:
                                 heapq.heappushpop(
                                     best_squads,
                                     (
-                                        (inv, oxp, sequence),
+                                        (round(oxp), mp + dp + fp + gp, sequence),
                                         squad,
                                     ),
                                 )
@@ -196,7 +189,7 @@ def lineup(
                                 heapq.heappush(
                                     best_squads,
                                     (
-                                        (inv, oxp, sequence),
+                                        (round(oxp), mp + dp + fp + gp, sequence),
                                         squad,
                                     ),
                                 )
