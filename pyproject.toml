@@ -31,6 +31,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[project.urls]
+Homepage = "https://github.com/janbjorge/lazyFPL"
+Repository = "https://github.com/janbjorge/lazyFPL"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 torch = "^2.1.2"
