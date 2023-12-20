@@ -1,10 +1,12 @@
 [tool.poetry]
-name = "lazyfpl"
-version = "0.0.5"
-description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 authors = ["JB Lovland <janbjorge@gmail.com>"]
+description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
+homepage = "https://github.com/janbjorge/lazyFPL"
 license = "MIT"
+name = "lazyfpl"
 readme = "README.md"
+repository = "https://github.com/janbjorge/lazyFPL"
+version = "0.0.6"
 keywords = [
     "fantasy premier league",
     "FPL",
@@ -30,10 +32,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
-[project.urls]
-Homepage = "https://github.com/janbjorge/lazyFPL"
-Repository = "https://github.com/janbjorge/lazyFPL"
 
 [tool.poetry.dependencies]
 python = "^3.11"

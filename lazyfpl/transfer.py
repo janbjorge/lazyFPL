@@ -19,13 +19,13 @@ def display(
     max_len_in_team = max(len(p.team) for p in transfers_in)
 
     max_len_out_name = max(len(p.webname) for p in transfers_out)
-    # max_len_out_team = max(len(p.team) for p in transfers_out)
+    max_len_out_team = max(len(p.team) for p in transfers_out)
 
     log.write("-" * 75)
     for o, i in zip(transfers_out, transfers_in):
         log.write(
             f"{o.position}: {o.webname:<{max_len_out_name}} "
-            "{o.team:<{max_len_out_team}} {o.xP:<5.1f}"
+            f"{o.team:<{max_len_out_team}} {o.xP:<5.1f}"
             "  -->>  "
             f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.1f}"
         )
