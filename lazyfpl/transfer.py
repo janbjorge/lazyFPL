@@ -3,11 +3,8 @@ import heapq
 import itertools
 import typing as T
 
-import constraints
-import fetch
-import helpers
-import structures
 from tqdm.std import tqdm
+from lazyfpl import constraints, fetch, helpers, structures
 
 
 def display(
