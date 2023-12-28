@@ -245,7 +245,7 @@ class HistoricGame(pydantic.BaseModel):
     yellow_cards: int
     GW: int
 
-    @pydantic.validator("position", pre=True)
+    @pydantic.field_validator("position", mode="before")
     def gk_to_gkp(cls, value: str) -> str:
         return "GKP" if value == "GK" else value
 

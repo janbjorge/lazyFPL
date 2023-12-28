@@ -76,7 +76,8 @@ def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]
         try:
             rv[player] = tuple(backeval(player))
         except ValueError as e:
-            traceback.print_exception(e)
+            if conf.debug:
+                traceback.print_exception(e)
     return rv
 
 
