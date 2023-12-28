@@ -28,7 +28,7 @@ class _Env(pydantic.BaseModel):
     )
     teamid: str = pydantic.Field(
         alias="FPL_TEAMID",
-        default="4270770",
+        default="",
     )
     db: pathlib.Path = pydantic.Field(
         alias="FPL_DATABASE",

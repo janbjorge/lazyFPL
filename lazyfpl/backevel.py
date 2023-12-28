@@ -60,11 +60,10 @@ def backeval(
 def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]:
     rv = dict[structures.Player, tuple[PredictionOutcome, ...]]()
     for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
-        if player.xP and player.xP > 0 and player.mtm() > 30:
-            try:
-                rv[player] = tuple(backeval(player))
-            except ValueError as e:
-                traceback.print_exception(e)
+        try:
+            rv[player] = tuple(backeval(player))
+        except ValueError as e:
+            traceback.print_exception(e)
     return rv
 
 

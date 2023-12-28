@@ -143,10 +143,14 @@ def picks() -> list[dict]:
             "from URL and cookie 'pl_profile' from 'application' in chrome."
         )
 
-    return requests.get(
+    response = requests.get(
         f"https://fantasy.premierleague.com/api/my-team/{conf.teamid}/",
         cookies={"pl_profile": conf.profile},
-    ).json()["picks"]
+    )
+    if not response:
+        raise ValueError("Non 2xx status code.")
+
+    return response.json()["picks"]
 
 
 def my_team() -> structures.Squad:

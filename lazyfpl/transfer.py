@@ -127,7 +127,7 @@ def transfer(
                 if (
                     helpers.valid_squad(squad)
                     and constraints.team_constraint(squad, 3)
-                    and len(set(squad)) == 15
+                    and len(set(squad)) == len(current)
                 ):
                     oxp = round(helpers.overall_xP(squad), 1)
                     inv = round(1 / (1 + helpers.tsscore(squad)), 3)
