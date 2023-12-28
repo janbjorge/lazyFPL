@@ -73,8 +73,8 @@ if __name__ == "__main__":
         print(f"\n{player.name}({player.webname}) - {player.position} - {player.team}")
         for e in sorted(ev, key=lambda x: x.kickoff):
             print(
-                f"  When: {e.kickoff.date()} xP: {e.prediceted:<6.1f} TP: {e.truth:<6.1f} "
-                f"Err: {abs(e.prediceted - e.truth):<6.1f}"
+                f"  When: {e.kickoff.date()} xP: {e.prediceted:<6.1f} "
+                f"TP: {e.truth:<6.1f} Err: {abs(e.prediceted - e.truth):<6.1f}"
             )
 
     print()

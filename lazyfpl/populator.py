@@ -1,6 +1,6 @@
+import argparse
 import csv
 import datetime
-import argparse
 import functools
 import io
 import traceback

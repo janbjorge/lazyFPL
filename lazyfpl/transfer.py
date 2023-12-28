@@ -4,6 +4,7 @@ import itertools
 import typing as T
 
 from tqdm.std import tqdm
+
 from lazyfpl import constraints, fetch, helpers, structures
 
 
