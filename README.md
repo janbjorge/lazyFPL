@@ -1,3 +1,9 @@
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![image](https://img.shields.io/pypi/v/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
+[![image](https://img.shields.io/pypi/l/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
+[![image](https://img.shields.io/pypi/pyversions/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
+
+
 # Fantasy Premier League Team Optimizer - Win at FPL with Laziness
 This Python project, "Fantasy Premier League Team Optimizer", employs data-driven methods for analyzing and optimizing Fantasy Premier League (FPL) team selections. It is an essential tool for FPL players who wish to leverage statistical models and optimization algorithms for a competitive advantage.
 
