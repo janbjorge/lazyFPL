@@ -6,7 +6,7 @@ license = "MIT"
 name = "lazyfpl"
 readme = "README.md"
 repository = "https://github.com/janbjorge/lazyFPL"
-version = "0.0.6"
+version = "0.0.8"
 keywords = [
     "fantasy premier league",
     "FPL",
@@ -46,6 +46,10 @@ pytz = "^2023.3.post1"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.8"
 mypy = "^1.7.1"
+types-pytz = "^2023.3.1.1"
+types-python-dateutil = "^2.8.19.14"
+types-requests = "^2.31.0.10"
+tqdm-stubs = "^0.2.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -54,6 +58,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 ignore = [
     "C901",
+    "PLR0912",
+    "PLR0913",
 ]
 select = [
     "C",
@@ -66,10 +72,10 @@ select = [
     "RSE",
     "SIM",
     "W",
-    # "C90",
-    # "NPY",
-    # "PD",
-    # "PL",
+    "C90",
+    "NPY",
+    "PD",
+    "PL",
 ]
 line-length = 88
 [tool.ruff.lint.isort]
