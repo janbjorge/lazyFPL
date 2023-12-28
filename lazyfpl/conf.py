@@ -32,7 +32,8 @@ class _Env(pydantic.BaseModel):
     )
     db: pathlib.Path = pydantic.Field(
         alias="FPL_DATABASE",
-        default=pathlib.Path(".database.sqlite3"),
+        default=pathlib.Path(__file__).parent.parent
+        / pathlib.Path(".database.sqlite3"),
     )
 
 
