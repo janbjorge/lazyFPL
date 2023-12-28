@@ -102,3 +102,7 @@ X    17.9   44.0   23   0.2      Aston Villa     DEF       Diego Carlos         
 X    16.1   46.0   57   -0.1     Bournemouth     GKP       Neto                 Nott'm Forest - Fulham - Spurs 
      15.9   55.0   46   0.9      Man City        GKP       Ederson M.           Everton - Sheffield Utd - Newcastle 
 ```
+
+## Acknowledgments
+
+Special thanks to the maintainers of the [Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) library. This invaluable resource has been instrumental in providing comprehensive and up-to-date FPL player statistics, game-week specific data, and historical performance records. Their dedication to maintaining and updating this library plays a crucial role in enhancing the capabilities of our "Fantasy Premier League Team Optimizer" and the FPL community at large. Your efforts are greatly appreciated!
