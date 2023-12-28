@@ -1,29 +1,31 @@
+from __future__ import annotations
+
 import collections
 import typing as T
 
 from lazyfpl import conf, structures
 
 
-def squad_price(lineup: T.Sequence["structures.Player"]) -> int:
+def squad_price(lineup: T.Sequence[structures.Player]) -> int:
     return sum(p.price for p in lineup)
 
 
-def squad_xP(lineup: T.Sequence["structures.Player"]) -> float:
+def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
     return sum(p.xP or 0 for p in lineup)
 
 
-def overall_xP(lineup: T.Sequence["structures.Player"]) -> float:
+def overall_xP(lineup: T.Sequence[structures.Player]) -> float:
     return (squad_xP(lineup) ** 2 + best_lineup_xP(lineup) ** 2) ** 0.5
 
 
 def best_lineup(
-    team: T.Sequence["structures.Player"],
+    team: T.Sequence[structures.Player],
     min_gkp: int = 1,
     min_def: int = 3,
     min_mid: int = 2,
     min_fwd: int = 1,
     size: int = 11,
-) -> list["structures.Player"]:
+) -> list[structures.Player]:
     team = sorted(team, key=lambda x: x.xP or 0, reverse=True)
     gkps = [p for p in team if p.position == "GKP"]
     defs = [p for p in team if p.position == "DEF"]
@@ -38,12 +40,12 @@ def best_lineup(
     return best + remainder[: (size - len(best))]
 
 
-def best_lineup_xP(lineup: T.Sequence["structures.Player"]) -> float:
+def best_lineup_xP(lineup: T.Sequence[structures.Player]) -> float:
     return squad_xP(best_lineup(lineup))
 
 
 def valid_squad(
-    squad: T.Sequence["structures.Player"],
+    squad: T.Sequence[structures.Player],
     gkps: int = 2,
     defs: int = 5,
     mids: int = 5,
@@ -58,7 +60,7 @@ def valid_squad(
     )
 
 
-def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> int:
+def sscore(lineup: T.Sequence[structures.Player], n: int = conf.lookahead) -> int:
     # "sscore -> "schedule score"
     # counts players in the lineup who plays in same match.
     # Ex. l'pool vs. man. city, and your team has Haaland and Salah as the only
@@ -73,9 +75,9 @@ def sscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> 
     return sum(sum(vs.count(x[::-1]) for x in set(vs)) for vs in per_gw.values())
 
 
-def tcnt(lineup: T.Sequence["structures.Player"]) -> int:
+def tcnt(lineup: T.Sequence[structures.Player]) -> int:
     return sum(v - 1 for v in collections.Counter(p.team for p in lineup).values()) * 2
 
 
-def tsscore(lineup: T.Sequence["structures.Player"], n: int = conf.lookahead) -> float:
+def tsscore(lineup: T.Sequence[structures.Player], n: int = conf.lookahead) -> float:
     return (tcnt(lineup) ** 2 + sscore(lineup, n=n) ** 2) ** 0.5

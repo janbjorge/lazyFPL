@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import datetime
 import functools
@@ -68,7 +70,7 @@ def person(pid: int) -> Persona:
 
 
 @functools.cache
-def players() -> list["structures.Player"]:
+def players() -> list[structures.Player]:
     pool = list[structures.Player]()
 
     for (name, webname), _games in itertools.groupby(

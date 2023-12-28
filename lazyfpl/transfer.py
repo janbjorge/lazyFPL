@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import heapq
 import itertools
@@ -9,8 +11,8 @@ from lazyfpl import constraints, fetch, helpers, structures
 
 
 def display(
-    old: T.Sequence["structures.Player"],
-    new: T.Sequence["structures.Player"],
+    old: T.Sequence[structures.Player],
+    new: T.Sequence[structures.Player],
     log: tqdm,
 ) -> None:
     transfers_in = sorted((p for p in new if p not in old), key=lambda x: x.position)
@@ -35,10 +37,10 @@ def display(
 
 
 def transfer(
-    current: T.Sequence["structures.Player"],
-    pool: T.Sequence["structures.Player"],
-    remove: T.Sequence["structures.Player"],
-    add: T.Sequence["structures.Player"],
+    current: T.Sequence[structures.Player],
+    pool: T.Sequence[structures.Player],
+    remove: T.Sequence[structures.Player],
+    add: T.Sequence[structures.Player],
     max_transfers: int,
     max_candidates: int,
     bar: tqdm,

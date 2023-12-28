@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import dataclasses
 import itertools
@@ -68,7 +70,7 @@ class Net(torch.nn.Module):
         return self.dec(h_final.squeeze()).view(-1)
 
 
-def features(f: "structures.Fixture") -> NormalizedFeatures:
+def features(f: structures.Fixture) -> NormalizedFeatures:
     assert f.points is not None
     p_scale = database.points()
     s_scale = database.strengths()
@@ -128,7 +130,7 @@ class SequenceDataset(TorchDataset):
 
 
 def samples(
-    fixtures: list["structures.Fixture"],
+    fixtures: list[structures.Fixture],
     upsample: int,
     backtrace: int = conf.backtrace,
 ) -> typing.Iterator[FeatureBundle]:
@@ -162,7 +164,7 @@ def samples(
 
 
 def train(
-    player: "structures.Player",
+    player: structures.Player,
     epochs: int,
     lr: float,
     upsample: int,
@@ -196,7 +198,7 @@ def train(
     return net
 
 
-def load_model(player: "structures.Player") -> "Net":
+def load_model(player: structures.Player) -> "Net":
     pid = populator.player_id_fuzzer(player.name)
     if bts := database.load_model(pid):
         ms = pickle.loads(bts)
@@ -206,7 +208,7 @@ def load_model(player: "structures.Player") -> "Net":
     raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
 
 
-def save_model(player: "structures.Player", m: "Net") -> None:
+def save_model(player: structures.Player, m: "Net") -> None:
     database.save_model(
         populator.player_id_fuzzer(player.name),
         pickle.dumps(
@@ -220,7 +222,7 @@ def save_model(player: "structures.Player", m: "Net") -> None:
 
 
 def xP(
-    player: "structures.Player",
+    player: structures.Player,
     lookahead: int = conf.lookahead,
     backtrace: int = conf.backtrace,
 ) -> float:

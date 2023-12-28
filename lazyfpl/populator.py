@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import csv
 import datetime
@@ -68,7 +70,7 @@ def session_from_url(url: str) -> str:
 
 
 @functools.cache
-def past_team_lists() -> dict[str, list["structures.Team"]]:
+def past_team_lists() -> dict[str, list[structures.Team]]:
     urls = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
