@@ -9,11 +9,16 @@ import typing
 import numpy as np
 import torch
 
-from lazyfpl import fetch, ml_model, structures
+from lazyfpl import conf, fetch, ml_model, structures
 
 
 @dataclasses.dataclass(frozen=True)
 class PredictionOutcome:
+    """
+    Represents the outcome of a prediction, including predicted and
+    actual values, and kickoff time.
+    """
+
     prediceted: float
     truth: float
     kickoff: datetime.datetime
@@ -22,9 +27,13 @@ class PredictionOutcome:
 def backeval(
     player: structures.Player,
     lookahead: int = 1,
-    backtrace: int = 3,
+    backtrace: int = conf.backtrace,
     backstep: int = 10,
 ) -> typing.Iterator[PredictionOutcome]:
+    """
+    Back-evaluates a player's performance predictions for a
+    given number of past fixtures.
+    """
     with torch.no_grad():
         net = ml_model.load_model(player)
         net.eval()
@@ -58,6 +67,10 @@ def backeval(
 
 
 def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]:
+    """
+    Evaluates the back-evaluation for all players and returns
+    a dictionary with the results.
+    """
     rv = dict[structures.Player, tuple[PredictionOutcome, ...]]()
     for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
         try:

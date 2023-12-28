@@ -18,11 +18,13 @@ from lazyfpl import conf, database, structures
 
 
 def now_tz_utc() -> datetime.datetime:
+    """Returns the current time in UTC timezone."""
     return datetime.datetime.now(tz=pytz.utc)
 
 
 @functools.cache
 def bootstrap() -> dict:
+    """Fetches data from the Fantasy Premier League API's bootstrap-static endpoint."""
     return requests.get(
         "https://fantasy.premierleague.com/api/bootstrap-static/"
     ).json()
@@ -30,6 +32,8 @@ def bootstrap() -> dict:
 
 @functools.cache
 def summary(id: int) -> dict:
+    """Fetches player summary for a given player ID from the
+    Fantasy Premier League API."""
     assert isinstance(id, int)
     return requests.get(
         f"https://fantasy.premierleague.com/api/element-summary/{id}/"
@@ -38,6 +42,7 @@ def summary(id: int) -> dict:
 
 @functools.cache
 def db_name_pid() -> dict[str, int]:
+    """Creates a dictionary mapping player names to their database IDs."""
     return {
         row["name"]: row["id"]
         for row in database.execute(
@@ -54,6 +59,8 @@ def db_name_pid() -> dict[str, int]:
 
 @functools.cache
 def player_id_fuzzer(name: str) -> int:
+    """Attempts to find a player ID in the database matching the
+    given name, with some flexibility for variations."""
     for dname, pid in db_name_pid().items():
         if dname.casefold() == name.casefold():
             return pid
@@ -66,11 +73,13 @@ def player_id_fuzzer(name: str) -> int:
 
 
 def session_from_url(url: str) -> str:
+    """Extracts the session year from a given URL."""
     return up.urlparse(url).path.split("/")[5]
 
 
 @functools.cache
 def past_team_lists() -> dict[str, list[structures.Team]]:
+    """Fetches and parses past team data from external sources for different seasons."""
     urls = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
@@ -88,6 +97,7 @@ def past_team_lists() -> dict[str, list[structures.Team]]:
 
 @functools.cache
 def past_team_lookup(tid: int, session: database.SESSIONS) -> str:
+    """Finds the team name for a given team ID and session."""
     assert isinstance(tid, int)
     for team in past_team_lists()[session]:
         if team.id == tid:
@@ -97,6 +107,7 @@ def past_team_lookup(tid: int, session: database.SESSIONS) -> str:
 
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
+    """Fetches and parses past game data from external sources for different seasons."""
     urls = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
@@ -109,6 +120,7 @@ def past_game_lists() -> dict[str, list[dict]]:
 
 
 def initialize_database() -> None:
+    """Initializes the database with the necessary tables."""
     database.execute(
         """
         CREATE TABLE team (
@@ -164,12 +176,14 @@ def initialize_database() -> None:
 
 
 def nuke_database() -> None:
+    """Removes all existing tables from the database."""
     database.execute("""DROP TABLE game;""")
     database.execute("""DROP TABLE player;""")
     database.execute("""DROP TABLE team;""")
 
 
 def populate_teams() -> None:
+    """Populates the database with team data."""
     sql = """
         INSERT INTO team (
             name,
@@ -202,6 +216,7 @@ def populate_teams() -> None:
 
 
 def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> None:
+    """Populates the database with player data for the specified session."""
     sql = """
         INSERT INTO player(
             webname,
@@ -235,6 +250,7 @@ def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> N
 
 
 def populate_games() -> None:
+    """Populates the database with game data, including historic and upcoming games."""
     game_sql = """
         INSERT INTO game (
             session,
@@ -366,6 +382,7 @@ def populate_games() -> None:
 
 @functools.cache
 def upcoming_team_id_to_name(id: int) -> str:
+    """Converts a team's ID to its name for upcoming games."""
     for item in bootstrap()["teams"]:
         if id == item["id"]:
             return item["name"]
@@ -374,6 +391,7 @@ def upcoming_team_id_to_name(id: int) -> str:
 
 @functools.cache
 def upcoming_position(name: str) -> database.POSITIONS:
+    """Determines the position of a player based on their name for upcoming games."""
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:
             element_type = bootstrap()["element_types"][element["element_type"] - 1]

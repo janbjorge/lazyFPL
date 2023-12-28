@@ -14,40 +14,63 @@ from lazyfpl import conf, database, ml_model, structures
 
 @dataclasses.dataclass(frozen=True)
 class Persona:
+    """
+    Represents a Persona with first name, second name, and webname.
+    """
+
     first: str
     second: str
     webname: str
 
     @property
     def combined(self) -> str:
+        """
+        Returns a combined string of the first and second name.
+        """
         return " ".join((self.first, self.second))
 
 
 @functools.cache
 def bootstrap() -> dict:
+    """
+    Fetches and returns data from the Fantasy Premier League API's
+    bootstrap-static endpoint.
+    """
     return requests.get(
         "https://fantasy.premierleague.com/api/bootstrap-static/"
     ).json()
 
 
 def bootstrap_events() -> list[dict]:
+    """
+    Extracts and returns event-related data from the bootstrap data.
+    """
     return bootstrap()["events"]
 
 
+@functools.cache
 def next_gw() -> int:
+    """
+    Determines and returns the next game week's ID.
+    """
     for e in bootstrap_events():
         if e["is_next"]:
             return int(e["id"])
     raise ValueError
 
 
+@functools.cache
 def current_gw() -> int:
+    """
+    Determines and returns the current game week's ID.
+    """
     for e in bootstrap_events():
         if e["is_current"]:
             return int(e["id"])
     raise ValueError
 
 
+@functools.cache
 def next_deadline() -> datetime.timedelta:
     for e in bootstrap_events():
         if e["is_next"]:
@@ -59,6 +82,9 @@ def next_deadline() -> datetime.timedelta:
 
 @functools.cache
 def person(pid: int) -> Persona:
+    """
+    Retrieves and returns a Persona object for a given player ID.
+    """
     for element in bootstrap()["elements"]:
         if element["id"] == pid:
             return Persona(
@@ -71,6 +97,9 @@ def person(pid: int) -> Persona:
 
 @functools.cache
 def players() -> list[structures.Player]:
+    """
+    Creates and returns a list of Player objects, each representing a football player.
+    """
     pool = list[structures.Player]()
 
     for (name, webname), _games in itertools.groupby(
@@ -137,6 +166,9 @@ def players() -> list[structures.Player]:
 
 @functools.cache
 def picks() -> list[dict]:
+    """
+    Fetches and returns the current team picks from the Fantasy Premier League API.
+    """
     if not conf.teamid or not conf.profile:
         raise RuntimeError(
             "Env. FPL-teamid and FPL-cookie/profile must be set. FPL-team id "
@@ -154,6 +186,9 @@ def picks() -> list[dict]:
 
 
 def my_team() -> structures.Squad:
+    """
+    Constructs and returns a Squad object representing the user's current team.
+    """
     webnames = {person(pick["element"]).webname for pick in picks()}
     return structures.Squad([p for p in players() if p.webname in webnames])
 

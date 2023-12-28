@@ -21,6 +21,8 @@ def position_combinations(
     pool: list[structures.Player],
     combinations: int,
 ) -> list[PositionCombination]:
+    """Generates and returns sorted combinations of players with their
+    total price and expected points."""
     assert combinations > 0
     return sorted(
         (
@@ -36,6 +38,7 @@ def must_include(
     combinations: list[PositionCombination],
     include: list[structures.Player],
 ) -> list[PositionCombination]:
+    """Filters combinations to only include certain players."""
     return (
         [c for c in combinations if all(i in c[-1] for i in include)]
         if include
@@ -51,6 +54,7 @@ def lineup(
     n_squads: int = 10_000,
     max_players_per_team: int = 3,
 ) -> list[structures.Squad]:
+    """Generates the best possible lineups within given constraints."""
     gkp_combinations = must_include(
         position_combinations(
             pool=[p for p in pool if p.position == "GKP"],
@@ -214,6 +218,8 @@ def position_price_candidates(
     pool: list[structures.Player],
     topn: int,
 ) -> T.Iterator[structures.Player]:
+    """Iterates over players in a pool, returning the top
+    players based on position and price."""
     for _, players in itertools.groupby(
         sorted(pool, key=lambda x: (x.position, x.price)),
         key=lambda x: (x.position, x.price),

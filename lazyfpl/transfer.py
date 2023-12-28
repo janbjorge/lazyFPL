@@ -15,6 +15,8 @@ def display(
     new: T.Sequence[structures.Player],
     log: tqdm,
 ) -> None:
+    """Displays the changes between the old and new player sequences,
+    including transfers in and out."""
     transfers_in = sorted((p for p in new if p not in old), key=lambda x: x.position)
     transfers_out = sorted((p for p in old if p not in new), key=lambda x: x.position)
 
@@ -45,6 +47,8 @@ def transfer(
     max_candidates: int,
     bar: tqdm,
 ):
+    """Generates transfer options for a given squad within specified
+    constraints and preferences."""
     max_budget = helpers.squad_price(current)
     min_budget = max_budget * 0.8
     candidates = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()

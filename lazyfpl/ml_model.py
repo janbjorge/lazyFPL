@@ -71,6 +71,7 @@ class Net(torch.nn.Module):
 
 
 def features(f: structures.Fixture) -> NormalizedFeatures:
+    """Generates and returns normalized features for a given fixture."""
     assert f.points is not None
     p_scale = database.points()
     s_scale = database.strengths()
@@ -134,6 +135,8 @@ def samples(
     upsample: int,
     backtrace: int = conf.backtrace,
 ) -> typing.Iterator[FeatureBundle]:
+    """Generates training samples from a list of fixtures, considering
+    upsampling and backtrace length."""
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
     train = [f for f in fixtures if not f.upcoming]
@@ -170,6 +173,7 @@ def train(
     upsample: int,
     batch_size: int,
 ):
+    """Trains a model for the given player using the specified parameters."""
     bundles = tuple(samples(player.fixutres, upsample, conf.backtrace))
     ds = SequenceDataset(
         x=torch.tensor(
@@ -198,7 +202,8 @@ def train(
     return net
 
 
-def load_model(player: structures.Player) -> "Net":
+def load_model(player: structures.Player) -> Net:
+    """Loads a trained model for the specified player."""
     pid = populator.player_id_fuzzer(player.name)
     if bts := database.load_model(pid):
         ms = pickle.loads(bts)
@@ -208,7 +213,8 @@ def load_model(player: structures.Player) -> "Net":
     raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
 
 
-def save_model(player: structures.Player, m: "Net") -> None:
+def save_model(player: structures.Player, m: Net) -> None:
+    """Saves the trained model for the specified player."""
     database.save_model(
         populator.player_id_fuzzer(player.name),
         pickle.dumps(
@@ -226,6 +232,8 @@ def xP(
     lookahead: int = conf.lookahead,
     backtrace: int = conf.backtrace,
 ) -> float:
+    """Calculates the expected points (xP) for a player based
+    on their upcoming fixtures."""
     expected = list[float]()
     fixutres = sorted(player.fixutres, key=lambda x: x.kickoff_time)
     inference = [features(f) for f in fixutres if not f.upcoming][-backtrace:]

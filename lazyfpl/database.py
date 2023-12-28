@@ -26,6 +26,7 @@ class SampleSummary:
 
     @staticmethod
     def fromiter(values: T.Iterable[float]) -> "SampleSummary":
+        """Creates a SampleSummary from an iterable of float values."""
         return SampleSummary(
             mean=statistics.mean(values),
             std=statistics.stdev(values),
@@ -33,6 +34,7 @@ class SampleSummary:
         )
 
     def normalize(self, value: float) -> float:
+        """Normalizes a value based on the mean and variance of the sample."""
         return (value - self.mean) / self.variance
 
 
@@ -76,10 +78,12 @@ class Game(pydantic.BaseModel):
 
 @functools.cache
 def connect(file: pathlib.Path = conf.db) -> sqlite3.Connection:
+    """Establishes a SQLite database connection using the provided file path."""
     return sqlite3.connect(file)
 
 
 def execute(sql: str, parameters: tuple = ()) -> list[dict]:
+    """Executes a SQL query and returns the result as a list of dictionaries."""
     with connect() as conn:
         cursor = conn.execute(sql, parameters)
         if desc := [x[0] for x in cursor.description or []]:
@@ -89,6 +93,7 @@ def execute(sql: str, parameters: tuple = ()) -> list[dict]:
 
 @functools.cache
 def games() -> list[Game]:
+    """Retrieves a list of Game objects representing football games from the database."""
     rows = execute(
         """
         select
@@ -126,6 +131,7 @@ def games() -> list[Game]:
 
 
 def price(pid: int) -> int:
+    """Fetches and returns the price of a player based on their ID."""
     rows = execute(
         """
         SELECT
@@ -141,6 +147,7 @@ def price(pid: int) -> int:
 
 
 def webname(pid: int) -> str:
+    """Retrieves and returns the web name of a player based on their ID."""
     rows = execute(
         """
         SELECT
@@ -156,6 +163,7 @@ def webname(pid: int) -> str:
 
 
 def save_model(player_id: int, model: bytes) -> None:
+    """Saves a machine learning model to the database for a given player ID."""
     execute(
         """
         UPDATE
@@ -170,6 +178,7 @@ def save_model(player_id: int, model: bytes) -> None:
 
 
 def load_model(player_id: int) -> bytes:
+    """Loads and returns a machine learning model from the database for a given player ID."""
     return execute(
         """
         SELECT
@@ -185,6 +194,7 @@ def load_model(player_id: int) -> bytes:
 
 @functools.cache
 def points() -> SampleSummary:
+    """Caches and returns a SampleSummary of points scored in games."""
     p = [
         row["points"]
         for row in execute(
@@ -203,6 +213,7 @@ def points() -> SampleSummary:
 
 @functools.cache
 def minutes() -> SampleSummary:
+    """Caches and returns a SampleSummary of minutes played in games."""
     p = [
         row["minutes"]
         for row in execute(
@@ -221,6 +232,7 @@ def minutes() -> SampleSummary:
 
 @functools.cache
 def strengths() -> Strenghts:
+    """Caches and returns a Strenghts object with aggregated team strengths."""
     rows = execute(
         """
         SELECT
