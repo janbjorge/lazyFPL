@@ -1,19 +1,82 @@
+from __future__ import annotations
+
 import pytest
 
 from lazyfpl import constraints, structures
 
-# def test_team_constraint(lineup: list[structures.Player], valid: bool):
-#     ...
+# Sample Player instances for testing
+player1 = structures.Player(
+    fixutres=[],
+    name="Player1",
+    news="",
+    position="GKP",
+    price=100,
+    team="TeamA",
+    webname="Player1",
+    xP=None,
+)
+player2 = structures.Player(
+    fixutres=[],
+    name="Player2",
+    news="",
+    position="DEF",
+    price=100,
+    team="TeamA",
+    webname="Player2",
+    xP=None,
+)
+player3 = structures.Player(
+    fixutres=[],
+    name="Player3",
+    news="",
+    position="MID",
+    price=100,
+    team="TeamB",
+    webname="Player3",
+    xP=None,
+)
+player4 = structures.Player(
+    fixutres=[],
+    name="Player4",
+    news="",
+    position="FWD",
+    price=100,
+    team="TeamC",
+    webname="Player4",
+    xP=None,
+)
 
 
 @pytest.mark.parametrize(
-    "lineup, valid",
-    (
-        ([...], True),
-        ([...], True),
-        ([...], True),
-    ),
+    "lineup, n, expected",
+    [
+        ([player1, player2, player3], 2, True),
+        ([player1, player1, player3], 1, False),
+    ],
 )
-def test_gkp_def_same_team(lineup: list[structures.Player], valid: bool):
-    ...
-    # assert constraints.gkp_def_same_team(lineup) == valid
+def test_team_constraint(
+    lineup: list[structures.Player],
+    n: int,
+    expected: bool,
+) -> None:
+    assert constraints.team_constraint(lineup, n) == expected
+
+
+@pytest.mark.parametrize(
+    "lineup, expected",
+    [
+        (
+            [player1, player2, player3],
+            True,
+        ),
+        (
+            [player1, player3, player4],
+            False,
+        ),
+    ],
+)
+def test_gkp_def_same_team(
+    lineup: list[structures.Player],
+    expected: bool,
+) -> None:
+    assert constraints.gkp_def_same_team(lineup) == expected
