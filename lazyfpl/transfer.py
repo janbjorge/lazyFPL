@@ -30,9 +30,9 @@ def display(
     for o, i in zip(transfers_out, transfers_in):
         log.write(
             f"{o.position}: {o.webname:<{max_len_out_name}} "
-            f"{o.team:<{max_len_out_team}} {o.xP:<5.1f}"
+            f"({o.team:<{max_len_out_team}}) {o.xP:<5.1f}"
             "  -->>  "
-            f"{i.webname:<{max_len_in_name}} {i.team:<{max_len_in_team}} {i.xP:.1f}"
+            f"{i.webname:<{max_len_in_name}} ({i.team:<{max_len_in_team}}) {i.xP:.1f}"
         )
     log.write(f"OxP gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.1f}")
     log.write(f"TS  gain: {(helpers.tsscore(new) - helpers.tsscore(old)):.1f}")
@@ -51,7 +51,7 @@ def transfer(
     constraints and preferences."""
     max_budget = helpers.squad_price(current)
     min_budget = max_budget * 0.8
-    candidates = list[tuple[tuple[float, float, int], tuple[structures.Player, ...]]]()
+    candidates = list[tuple[tuple[float, int], tuple[structures.Player, ...]]]()
 
     squad_base = {
         n: tuple(
@@ -133,14 +133,13 @@ def transfer(
                     and constraints.team_constraint(squad, 3)
                     and len(set(squad)) == len(current)
                 ):
-                    oxp = round(helpers.overall_xP(squad), 1)
-                    inv = round(1 / (1 + helpers.tsscore(squad)), 3)
+                    oxp = round(helpers.squad_xP(squad), 1)
                     sequence += 1
                     if len(candidates) >= max_candidates:
                         heapq.heappushpop(
                             candidates,
                             (
-                                (inv, oxp, sequence),
+                                (oxp, sequence),
                                 squad,
                             ),
                         )
@@ -148,7 +147,7 @@ def transfer(
                         heapq.heappush(
                             candidates,
                             (
-                                (inv, oxp, sequence),
+                                (oxp, sequence),
                                 squad,
                             ),
                         )
