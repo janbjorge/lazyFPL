@@ -194,7 +194,7 @@ def load_model(player_id: int) -> bytes:
 
 @functools.cache
 def points() -> SampleSummary:
-    """Caches and returns a SampleSummary of points scored in games."""
+    """SampleSummary of points scored in games."""
     p = [
         row["points"]
         for row in execute(
@@ -213,7 +213,7 @@ def points() -> SampleSummary:
 
 @functools.cache
 def minutes() -> SampleSummary:
-    """Caches and returns a SampleSummary of minutes played in games."""
+    """SampleSummary of minutes played in games."""
     p = [
         row["minutes"]
         for row in execute(
@@ -232,7 +232,7 @@ def minutes() -> SampleSummary:
 
 @functools.cache
 def strengths() -> Strenghts:
-    """Caches and returns a Strenghts object with aggregated team strengths."""
+    """Strenghts object with aggregated team strengths."""
     rows = execute(
         """
         SELECT

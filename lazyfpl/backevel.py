@@ -6,7 +6,6 @@ import statistics
 import traceback
 import typing
 
-import numpy as np
 import torch
 
 from lazyfpl import conf, fetch, ml_model, structures
@@ -41,22 +40,14 @@ def backeval(
             fixutres = [f for f in player.fixutres if not f.upcoming][
                 -(backtrace + lookahead + n) : -(lookahead + n)
             ]
-            inference = [ml_model.features(f) for f in fixutres]
+            inference = [(ml_model.features(f)).flattend() for f in fixutres]
             try:
                 next_fixture = player.fixutres[player.fixutres.index(fixutres[-1]) + 1]
             except IndexError:
                 break
-            inf = np.expand_dims(
-                np.stack(
-                    [
-                        np.array(dataclasses.astuple(x), dtype=np.float32)
-                        for x in inference
-                    ],
-                    axis=0,
-                ).astype(np.float32),
-                axis=0,
-            )
-            xP = net(torch.from_numpy(inf)).detach().numpy()[0]
+
+            xP = net(torch.tensor(inference, dtype=torch.float32)).detach().numpy()[0]
+
             assert xP is not None
             assert next_fixture.points is not None
             yield PredictionOutcome(

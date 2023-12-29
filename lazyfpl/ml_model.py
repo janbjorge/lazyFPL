@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import functools
 import itertools
 import math
 import pickle
 import traceback
 import typing
 
-import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 from tqdm.std import tqdm
@@ -24,6 +24,7 @@ class NormalizedFeatures:
     at_home: float
     points: float
     minutes: float
+    opponent: tuple[float, ...]
     opponent_strength_attack_away: float
     opponent_strength_attack_home: float
     opponent_strength_defence_away: float
@@ -36,6 +37,18 @@ class NormalizedFeatures:
     team_strength_defence_home: float
     team_strength_overall_away: float
     team_strength_overall_home: float
+
+    def flattend(self) -> tuple[float, ...]:
+        def _flatter(obj):
+            if isinstance(obj, (float, int, bool)):
+                yield obj
+            elif isinstance(obj, (tuple, list, set)):
+                for v in obj:
+                    yield from _flatter(v)
+            else:
+                raise NotImplementedError(type(obj))
+
+        return tuple(_flatter(dataclasses.astuple(self)))
 
 
 @dataclasses.dataclass
@@ -70,6 +83,14 @@ class Net(torch.nn.Module):
         return self.dec(h_final.squeeze()).view(-1)
 
 
+@functools.cache
+def onehot_team_name(name: str) -> tuple[float, ...]:
+    names = sorted({g.team for g in database.games()})
+    enc = [0.0] * len(names)
+    enc[names.index(name)] = 1.0
+    return tuple(enc)
+
+
 def features(f: structures.Fixture) -> NormalizedFeatures:
     """Generates and returns normalized features for a given fixture."""
     assert f.points is not None
@@ -80,6 +101,7 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
         at_home=(f.at_home - 0.5) / 0.5,
         points=p_scale.normalize(f.points),
         minutes=m_scale.normalize(f.minutes or 0),
+        opponent=onehot_team_name(f.opponent),
         opponent_strength_attack_away=s_scale.strength_attack_away.normalize(
             f.opponent_strength_attack_away,
         ),
@@ -175,9 +197,10 @@ def train(
 ):
     """Trains a model for the given player using the specified parameters."""
     bundles = tuple(samples(player.fixutres, upsample, conf.backtrace))
+    features = [[f.flattend() for f in b.features] for b in bundles]
     ds = SequenceDataset(
         x=torch.tensor(
-            tuple(tuple(dataclasses.astuple(f) for f in b.features) for b in bundles),
+            features,
             dtype=torch.float32,
         ),
         y=torch.tensor(
@@ -187,7 +210,7 @@ def train(
     )
     loader = TorchDataLoader(ds, batch_size=batch_size, shuffle=True)
 
-    loss_function = torch.nn.SmoothL1Loss()
+    loss_function = torch.nn.HuberLoss()
     net = Net(ds[0][0].shape[-1])
     optimizer = torch.optim.AdamW(net.parameters(), lr=lr)
 
@@ -236,27 +259,21 @@ def xP(
     on their upcoming fixtures."""
     expected = list[float]()
     fixutres = sorted(player.fixutres, key=lambda x: x.kickoff_time)
-    inference = [features(f) for f in fixutres if not f.upcoming][-backtrace:]
+    inference = [features(f).flattend() for f in fixutres if not f.upcoming][
+        -backtrace:
+    ]
     upcoming = [f for f in fixutres if f.upcoming]
-
     model = load_model(player)
     model.eval()
     with torch.no_grad():
         for nxt in upcoming[:lookahead]:
-            inf = torch.from_numpy(
-                np.expand_dims(
-                    np.stack(
-                        [
-                            np.array(dataclasses.astuple(x), dtype=np.float32)
-                            for x in inference
-                        ],
-                        axis=0,
-                    ).astype(np.float32),
-                    axis=0,
+            points = (
+                model(
+                    torch.tensor(inference, dtype=torch.float32),
                 )
+                .detach()
+                .numpy()
             )
-
-            points = model(inf).detach().numpy()
             assert points.shape == (1,), points.shape
             expected.extend(points)
             inference.pop(0)
@@ -265,7 +282,7 @@ def xP(
                     structures.Fixture(
                         **(dataclasses.asdict(nxt) | {"points": points[0]})
                     )
-                )
+                ).flattend()
             )
 
     if conf.debug:
@@ -301,7 +318,7 @@ def main():
     parser.add_argument(
         "--upsample",
         type=int,
-        default=25,
+        default=32,
         help="(default: %(default)s)",
     )
     parser.add_argument(
