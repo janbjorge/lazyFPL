@@ -177,9 +177,9 @@ def initialize_database() -> None:
 
 def nuke_database() -> None:
     """Removes all existing tables from the database."""
-    database.execute("""DROP TABLE game;""")
-    database.execute("""DROP TABLE player;""")
-    database.execute("""DROP TABLE team;""")
+    database.execute("""DROP TABLE IF EXISTS game;""")
+    database.execute("""DROP TABLE IF EXISTS player;""")
+    database.execute("""DROP TABLE IF EXISTS team;""")
 
 
 def populate_teams() -> None:
@@ -197,7 +197,14 @@ def populate_teams() -> None:
             strength_overall_home
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     """
-    for session, teams in past_team_lists().items():
+    for session, teams in tqdm(
+        past_team_lists().items(),
+        ascii=True,
+        ncols=120,
+        postfix="Populates teams",
+        unit_divisor=1_000,
+        unit_scale=True,
+    ):
         for team in teams:
             database.execute(
                 sql,
@@ -232,9 +239,10 @@ def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> N
     for ele in tqdm(
         bootstrap()["elements"],
         ascii=True,
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
         unit_divisor=1_000,
         unit_scale=True,
+        ncols=120,
+        postfix="Populate players",
     ):
         database.execute(
             sql,
@@ -277,7 +285,8 @@ def populate_games() -> None:
         for game in tqdm(
             games,
             ascii=True,
-            bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+            ncols=120,
+            postfix=f"Populate games: {session}",
             unit_divisor=1_000,
             unit_scale=True,
         ):
@@ -323,17 +332,6 @@ def populate_games() -> None:
                     traceback.print_exception(e)
                 continue
 
-    database.execute(
-        """
-        UPDATE
-            game
-        SET
-            position = "GKP"
-        WHERE
-            position = "GK"
-    """
-    )
-
     now = now_tz_utc()
     upcoming_games: list[int] = [
         e["id"] for e in bootstrap()["events"] if dtparser(e["deadline_time"]) > now
@@ -341,7 +339,8 @@ def populate_games() -> None:
     for ele in tqdm(
         bootstrap()["elements"],
         ascii=True,
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+        ncols=120,
+        postfix="Populate upcoming games",
         unit_divisor=1_000,
         unit_scale=True,
     ):
@@ -404,12 +403,9 @@ def main():
         prog="Populator",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--fresh", action="store_true")
-    parsed = parser.parse_args()
+    parser.parse_args()
 
-    if parsed.fresh:
-        nuke_database()
-
+    nuke_database()
     initialize_database()
     populate_teams()
     populate_players()

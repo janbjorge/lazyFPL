@@ -47,6 +47,8 @@ python3 -m lazyfpl.backevel
 python3 -m lazyfpl.optimizer --no-news --min-mtm 60
 ```
 
+Obs! Step 1 and 2 must be run every gameweek to optain any new data.
+
 
 ## optimizer
 Summary of lazyfpl.optimizer Command Output
