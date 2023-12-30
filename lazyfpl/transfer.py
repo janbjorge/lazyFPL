@@ -1,80 +1,85 @@
 from __future__ import annotations
 
 import argparse
-import heapq
+import collections
 import itertools
-import typing as T
+from typing import Generator, NamedTuple, Sequence
 
-from tqdm.std import tqdm
-
-from lazyfpl import constraints, fetch, helpers, structures
+from lazyfpl import fetch, helpers, optimizer, structures
 
 
-def display(
-    old: T.Sequence[structures.Player],
-    new: T.Sequence[structures.Player],
-    log: tqdm,
-) -> None:
+class Transfer(NamedTuple):
+    bought: optimizer.PositionCombination
+    sold: optimizer.PositionCombination
+
+
+def display(trans: Transfer) -> None:
     """Displays the changes between the old and new player sequences,
     including transfers in and out."""
-    transfers_in = sorted((p for p in new if p not in old), key=lambda x: x.position)
-    transfers_out = sorted((p for p in old if p not in new), key=lambda x: x.position)
+    sold = sorted((p for p in trans.sold.players), key=lambda x: x.position)
+    bought = sorted((p for p in trans.bought.players), key=lambda x: x.position)
 
-    max_len_in_name = max(len(p.webname) for p in transfers_in)
-    max_len_in_team = max(len(p.team) for p in transfers_in)
+    max_len_in_name = max(len(p.webname) for p in bought)
+    max_len_in_team = max(len(p.team) for p in bought)
 
-    max_len_out_name = max(len(p.webname) for p in transfers_out)
-    max_len_out_team = max(len(p.team) for p in transfers_out)
+    max_len_out_name = max(len(p.webname) for p in sold)
+    max_len_out_team = max(len(p.team) for p in sold)
 
-    log.write("-" * 75)
-    for o, i in zip(transfers_out, transfers_in):
-        log.write(
-            f"{o.position}: {o.webname:<{max_len_out_name}} "
-            f"({o.team:<{max_len_out_team}}) {o.xP:<5.1f}"
+    print("-" * 75)
+
+    for s, b in zip(sold, bought):
+        print(
+            f"{s.position}: {s.webname:<{max_len_out_name}} "
+            f"- {s.team:<{max_len_out_team}} {s.xP:<5.1f}"
             "  -->>  "
-            f"{i.webname:<{max_len_in_name}} ({i.team:<{max_len_in_team}}) {i.xP:.1f}"
+            f"{b.webname:<{max_len_in_name}} - "
+            f"{b.team:<{max_len_in_team}} {b.xP:.1f}"
         )
-    log.write(f"OxP gain: {(helpers.overall_xP(new) - helpers.overall_xP(old)):.1f}")
-    log.write(f"TS  gain: {(helpers.tsscore(new) - helpers.tsscore(old)):.1f}")
+    print(f"OxP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
+    # log.write(f"TS  gain: {(helpers.tsscore(bought) - helpers.tsscore(sold)):.1f}")
 
 
 def transfer(
-    current: T.Sequence[structures.Player],
-    pool: T.Sequence[structures.Player],
-    remove: T.Sequence[structures.Player],
-    add: T.Sequence[structures.Player],
+    current: Sequence[structures.Player],
+    pool: Sequence[structures.Player],
+    add: Sequence[structures.Player],
+    remove: Sequence[structures.Player],
     max_transfers: int,
-    max_candidates: int,
-    bar: tqdm,
-):
+    max_budget: int = 1000,
+    max_players_per_team: int = 3,
+) -> Generator[Transfer, None, None]:
     """Generates transfer options for a given squad within specified
     constraints and preferences."""
-    max_budget = helpers.squad_price(current)
-    min_budget = max_budget * 0.8
-    candidates = list[tuple[tuple[float, int], tuple[structures.Player, ...]]]()
 
-    squad_base = {
+    sold = {
         n: tuple(
-            (c, helpers.squad_price(c))
+            optimizer.PositionCombination(
+                helpers.squad_price(c), helpers.squad_xP(c), c
+            )
             for c in sorted(
-                itertools.combinations(current, len(current) - n),
+                itertools.combinations(current, n),
                 key=helpers.squad_price,
             )
         )
         for n in range(1, max_transfers + 1)
     }
-    squad_base = {
-        n: tuple(
-            (players, cost)
-            for players, cost in squad_cost
-            if all(r not in players for r in remove)
-        )
-        for n, squad_cost in squad_base.items()
+
+    if remove:
+        for n, combinations in sold.items():
+            sold[n] = tuple(
+                c for c in combinations if all(r in c.players for r in remove)
+            )
+
+    min_bought_xp = {
+        n: min(c.xP for c in combinations) for n, combinations in sold.items()
     }
 
-    transfer_in = {
+    pool = [p for p in pool if p not in current]
+    bought = {
         n: tuple(
-            (c, helpers.squad_price(c))
+            optimizer.PositionCombination(
+                helpers.squad_price(c), helpers.squad_xP(c), c
+            )
             for c in sorted(
                 itertools.combinations(pool, n),
                 key=helpers.squad_price,
@@ -82,81 +87,70 @@ def transfer(
         )
         for n in range(1, max_transfers + 1)
     }
-    transfer_in = {
-        n: tuple(
-            (players, cost)
-            for players, cost in squad_cost
-            if all(a in players for a in add)
-        )
-        for n, squad_cost in transfer_in.items()
+    if add:
+        for n, combinations in bought.items():
+            bought[n] = tuple(
+                c for c in combinations if all(a in c.players for a in add)
+            )
+
+    min_bought_price = {
+        n: min(c.price for c in combinations) for n, combinations in bought.items()
+    }
+    min_bought_xp = {
+        n: min(c.xP for c in combinations) for n, combinations in bought.items()
     }
 
-    min_max_tranfer_in = {
-        n: (
-            min(c for _, c in transfer_in[n]),
-            max(c for _, c in transfer_in[n]),
-        )
-        for n in transfer_in
-    }
+    for n, combinations in sold.items():
+        print(f"Sell combinations:   {n} - {len(combinations)}")
 
-    bar.total = sum(
-        len(transfer_in[n]) * len(squad_base[n]) for n in range(1, max_transfers + 1)
-    )
+    for n, combinations in bought.items():
+        print(f"Bought combinations: {n} - {len(combinations)}")
 
-    sequence: int = 0
+    current_squad_price = helpers.squad_price(current)
+    current_team_tally = collections.Counter(p.team for p in current)
 
-    for n in range(1, max_transfers + 1):
-        for base, base_cost in squad_base[n]:
-            min_c, max_c = min_max_tranfer_in[n]
-            assert min_c <= max_c
-            if max_c + base_cost < min_budget:
-                bar.update(len(transfer_in[n]))
-                continue
-            if min_c + base_cost > max_budget:
-                bar.update(len(transfer_in[n]))
+    for nin, bought_combinations in bought.items():
+        for sold_combination in sold[nin]:
+            if sold_combination.xP > min_bought_xp[nin]:
                 continue
 
-            for t_in, t_in_cost in transfer_in[n]:
-                cost = base_cost + t_in_cost
-                if cost > max_budget:
-                    break
-                if cost < min_budget:
-                    continue
+            if (
+                current_squad_price - sold_combination.price + min_bought_price[nin]
+                > max_budget
+            ):
+                continue
 
-                squad = base + t_in
-
-                if add and all(a not in squad for a in add):
+            for bought_combination in bought_combinations:
+                if bought_combination.xP < sold_combination.xP:
                     continue
 
                 if (
-                    helpers.valid_squad(squad)
-                    and constraints.team_constraint(squad, 3)
-                    and len(set(squad)) == len(current)
+                    current_squad_price
+                    - sold_combination.price
+                    + bought_combination.price
+                    > max_budget
                 ):
-                    oxp = round(helpers.squad_xP(squad), 1)
-                    sequence += 1
-                    if len(candidates) >= max_candidates:
-                        heapq.heappushpop(
-                            candidates,
-                            (
-                                (oxp, sequence),
-                                squad,
-                            ),
-                        )
-                    else:
-                        heapq.heappush(
-                            candidates,
-                            (
-                                (oxp, sequence),
-                                squad,
-                            ),
-                        )
+                    continue
 
-            bar.update(len(transfer_in[n]))
+                team_tally = (
+                    current_team_tally
+                    + collections.Counter(p.team for p in bought_combination.players)
+                    - collections.Counter(p.team for p in sold_combination.players)
+                )
+                if max(team_tally.values()) > max_players_per_team:
+                    continue
 
-    return [
-        structures.Squad(heapq.heappop(candidates)[-1]) for _ in range(len(candidates))
-    ]
+                bought_sold_position_tally = collections.Counter(
+                    p.position for p in bought_combination.players
+                ) - collections.Counter(p.position for p in sold_combination.players)
+
+                if bought_sold_position_tally:
+                    continue
+
+                yield Transfer(
+                    bought_combination,
+                    sold_combination,
+                )
 
 
 def main() -> None:
@@ -220,16 +214,18 @@ def main() -> None:
         pool = [p for p in pool if p.webname not in args.exclude]
         pool = [p for p in pool if p.team not in args.exclude]
 
-    if args.min_xp > 0:
+    if args.min_xp:
         pool = [p for p in pool if p.xP >= args.min_xp]
 
-    if args.min_mtm > 0:
+    if args.min_mtm:
         pool = [p for p in pool if p.mtm() >= args.min_mtm]
 
     if args.no_news:
         pool = [p for p in pool if not p.news]
 
-    pool = sorted(pool, key=lambda p: p.xP or 0)
+    if args.add:
+        pool += [p for p in fetch.players() if p.webname in args.add]
+
     print(">>> Pool")
     print(structures.Squad(pool))
 
@@ -237,27 +233,21 @@ def main() -> None:
     team = fetch.my_team()
     print(team)
 
-    with tqdm(
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
-        unit_scale=True,
-        unit_divisor=1_000,
-        ascii=True,
-    ) as bar:
-        for new_squad in transfer(
+    transfers = sorted(
+        transfer(
             current=team.players,
-            pool=pool,
+            pool=list(set(pool)),
+            add=[p for p in pool if p.webname in args.add] if args.add else [],
+            remove=[p for p in team.players if p.webname in args.remove]
+            if args.remove
+            else [],
             max_transfers=args.max_transfers,
-            max_candidates=args.max_candidates,
-            bar=bar,
-            remove=[
-                p
-                for p in team.players
-                if p.webname in args.remove or p.team in args.remove
-            ]
-            + [p for p in team.players if args.no_news and p.news],
-            add=[p for p in pool if p.webname in args.add or p.team in args.add],
-        ):
-            display(team.players, new_squad, bar)
+        ),
+        key=lambda x: x.bought.xP - x.sold.xP,
+    )
+
+    for trans in transfers:
+        display(trans)
 
 
 if __name__ == "__main__":
