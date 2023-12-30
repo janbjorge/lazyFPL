@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 import collections
-import typing as T
+from typing import Sequence
 
 from lazyfpl import conf, structures
 
 
-def squad_price(lineup: T.Sequence[structures.Player]) -> int:
+def squad_price(lineup: Sequence[structures.Player]) -> int:
     """Calculates and returns the total price of a football squad."""
     return sum(p.price for p in lineup)
 
 
-def squad_xP(lineup: T.Sequence[structures.Player]) -> float:
+def squad_xP(lineup: Sequence[structures.Player]) -> float:
     """Calculates and returns the total expected points (xP) of a football squad."""
     return sum(p.xP or 0 for p in lineup)
 
 
-def overall_xP(lineup: T.Sequence[structures.Player]) -> float:
+def overall_xP(lineup: Sequence[structures.Player]) -> float:
     """Calculates and returns the overall expected points (xP) for a lineup."""
     return (squad_xP(lineup) ** 2 + best_lineup_xP(lineup) ** 2) ** 0.5
 
 
 def best_lineup(
-    team: T.Sequence[structures.Player],
+    team: Sequence[structures.Player],
     min_gkp: int = 1,
     min_def: int = 3,
     min_mid: int = 2,
@@ -46,29 +46,29 @@ def best_lineup(
     return best + remainder[: (size - len(best))]
 
 
-def best_lineup_xP(lineup: T.Sequence[structures.Player]) -> float:
+def best_lineup_xP(lineup: Sequence[structures.Player]) -> float:
     """Calculates and returns the expected points of the best possible lineup."""
     return squad_xP(best_lineup(lineup))
 
 
 def valid_squad(
-    squad: T.Sequence[structures.Player],
+    squad: Sequence[structures.Player],
     gkps: int = 2,
     defs: int = 5,
     mids: int = 5,
     fwds: int = 3,
 ) -> bool:
     """Checks if a squad meets the specified position requirements."""
-    cnt = collections.Counter(p.position for p in squad)
+    tally = collections.Counter(p.position for p in squad)
     return (
-        cnt["GKP"] == gkps
-        and cnt["DEF"] == defs
-        and cnt["MID"] == mids
-        and cnt["FWD"] == fwds
+        tally["GKP"] == gkps
+        and tally["DEF"] == defs
+        and tally["MID"] == mids
+        and tally["FWD"] == fwds
     )
 
 
-def sscore(lineup: T.Sequence[structures.Player], n: int = conf.lookahead) -> int:
+def sscore(lineup: Sequence[structures.Player], n: int = conf.lookahead) -> int:
     """Calculates and returns the 'schedule score' based on players
     playing in the same match."""
     # "sscore -> "schedule score"
@@ -85,11 +85,11 @@ def sscore(lineup: T.Sequence[structures.Player], n: int = conf.lookahead) -> in
     return sum(sum(vs.count(x[::-1]) for x in set(vs)) for vs in per_gw.values())
 
 
-def tcnt(lineup: T.Sequence[structures.Player]) -> int:
+def tcnt(lineup: Sequence[structures.Player]) -> int:
     """Counts and returns the total number of team constraints in a lineup."""
     return sum(v - 1 for v in collections.Counter(p.team for p in lineup).values()) * 2
 
 
-def tsscore(lineup: T.Sequence[structures.Player], n: int = conf.lookahead) -> float:
+def tsscore(lineup: Sequence[structures.Player], n: int = conf.lookahead) -> float:
     """Calculates and returns the total 'team schedule score' for a lineup."""
     return (tcnt(lineup) ** 2 + sscore(lineup, n=n) ** 2) ** 0.5

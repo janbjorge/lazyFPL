@@ -132,7 +132,7 @@ class Player:
             f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
             f"{self.upcoming_difficulty()*10:<8.1f} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
-            f"{' - '.join(self.upcoming_opponents()[:conf.lookahead])} "
+            f"{(' - '.join(self.upcoming_opponents()[:conf.lookahead])):<50} "
             f"{self.news}"
         )
 
@@ -187,7 +187,7 @@ class Squad:
             "BIS  xP     Price  TP   UD       Team            Position  Player"
             + " " * 15
             + "Upcoming"
-            + " " * 30
+            + " " * 43
             + "News"
         )
         for _, players in itertools.groupby(

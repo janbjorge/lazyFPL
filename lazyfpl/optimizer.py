@@ -4,14 +4,14 @@ import argparse
 import collections
 import heapq
 import itertools
-import typing as T
+from typing import Generator, NamedTuple
 
 from tqdm.std import tqdm
 
 from lazyfpl import constraints, fetch, helpers, structures
 
 
-class PositionCombination(T.NamedTuple):
+class PositionCombination(NamedTuple):
     price: int
     xP: float
     players: tuple[structures.Player, ...]
@@ -34,6 +34,25 @@ def position_combinations(
     )
 
 
+def position_price_candidates(
+    pool: list[structures.Player],
+    topn: int,
+) -> Generator[structures.Player, None, None]:
+    """Iterates over players in a pool, returning the top
+    players based on position and price."""
+    for _, players in itertools.groupby(
+        sorted(pool, key=lambda x: (x.position, x.price)),
+        key=lambda x: (x.position, x.price),
+    ):
+        toadd = []
+        team = set[str]()
+        for player in sorted(players, key=lambda x: x.xP or 0, reverse=True):
+            if player.team not in team:
+                toadd.append(player)
+                team.add(player.team)
+        yield from toadd[:topn]
+
+
 def must_include(
     combinations: list[PositionCombination],
     include: list[structures.Player],
@@ -46,48 +65,20 @@ def must_include(
     )
 
 
-def lineup(
-    pool: list[structures.Player],
+def lineups_xp(
+    gkp_combinations: list[PositionCombination],
+    def_combinations: list[PositionCombination],
+    mid_combinations: list[PositionCombination],
+    fwd_combinations: list[PositionCombination],
     budget_lower: int = 900,
     budget_upper: int = 1_000,
-    include: T.Sequence[structures.Player] = (),
-    n_squads: int = 10_000,
+    n_squads: int = 1_000,
     max_players_per_team: int = 3,
+    score_decay: float = 0.995,
 ) -> list[structures.Squad]:
     """Generates the best possible lineups within given constraints."""
-    gkp_combinations = must_include(
-        position_combinations(
-            pool=[p for p in pool if p.position == "GKP"],
-            combinations=2,
-        ),
-        [p for p in include if p.position == "GKP"],
-    )
-
-    def_combinations = must_include(
-        position_combinations(
-            pool=[p for p in pool if p.position == "DEF"],
-            combinations=5,
-        ),
-        [p for p in include if p.position == "DEF"],
-    )
-
-    mid_combinations = must_include(
-        position_combinations(
-            pool=[p for p in pool if p.position == "MID"],
-            combinations=5,
-        ),
-        [p for p in include if p.position == "MID"],
-    )
-
-    fwd_combinations = must_include(
-        position_combinations(
-            pool=[p for p in pool if p.position == "FWD"],
-            combinations=3,
-        ),
-        [p for p in include if p.position == "FWD"],
-    )
-
     # All combinations sorted from higest -> lowest xP.
+    assert 0 < score_decay < 1
 
     total = (
         len(gkp_combinations)
@@ -134,7 +125,7 @@ def lineup(
         unit_scale=True,
     ) as bar:
         while len(best_squads) < min(n_squads, total) and best_squad_xp > 0:
-            best_squad_xp *= 0.999
+            best_squad_xp *= score_decay
             bar.reset()
             bar.set_postfix_str(f"Squad xP cutoff: {best_squad_xp:.1f}")
             for gp, gxp, g in gkp_combinations:
@@ -175,7 +166,7 @@ def lineup(
 
                             if (
                                 budget_lower
-                                <= (squad_price := mp + dp + fp + gp)
+                                <= (price := mp + dp + fp + gp)
                                 <= budget_upper
                                 and constraints.team_constraint(
                                     squad := g + f + d + m, n=max_players_per_team
@@ -189,7 +180,7 @@ def lineup(
                                         (
                                             (
                                                 round(oxp, 1),
-                                                squad_price,
+                                                price,
                                                 sequence := sequence + 1,
                                             ),
                                             squad,
@@ -201,7 +192,7 @@ def lineup(
                                         (
                                             (
                                                 round(oxp, 1),
-                                                squad_price,
+                                                price,
                                                 sequence := sequence + 1,
                                             ),
                                             squad,
@@ -212,25 +203,6 @@ def lineup(
         structures.Squad(heapq.heappop(best_squads)[-1])
         for _ in range(len(best_squads))
     ]
-
-
-def position_price_candidates(
-    pool: list[structures.Player],
-    topn: int,
-) -> T.Iterator[structures.Player]:
-    """Iterates over players in a pool, returning the top
-    players based on position and price."""
-    for _, players in itertools.groupby(
-        sorted(pool, key=lambda x: (x.position, x.price)),
-        key=lambda x: (x.position, x.price),
-    ):
-        toadd = []
-        team = set[str]()
-        for player in sorted(players, key=lambda x: x.xP or 0, reverse=True):
-            if player.team not in team:
-                toadd.append(player)
-                team.add(player.team)
-        yield from toadd[:topn]
 
 
 def main():
@@ -351,11 +323,37 @@ def main():
     pool = list(set(pool))
 
     print(structures.Squad(pool))
-    squads = lineup(
-        pool=pool,
+    squads = lineups_xp(
+        gkp_combinations=must_include(
+            position_combinations(
+                pool=[p for p in pool if p.position == "GKP"],
+                combinations=2,
+            ),
+            [p for p in include if p.position == "GKP"],
+        ),
+        def_combinations=must_include(
+            position_combinations(
+                pool=[p for p in pool if p.position == "DEF"],
+                combinations=5,
+            ),
+            [p for p in include if p.position == "DEF"],
+        ),
+        mid_combinations=must_include(
+            position_combinations(
+                pool=[p for p in pool if p.position == "MID"],
+                combinations=5,
+            ),
+            [p for p in include if p.position == "MID"],
+        ),
+        fwd_combinations=must_include(
+            position_combinations(
+                pool=[p for p in pool if p.position == "FWD"],
+                combinations=3,
+            ),
+            [p for p in include if p.position == "FWD"],
+        ),
         budget_lower=args.budget_lower,
         budget_upper=args.budget_upper,
-        include=include,
         max_players_per_team=args.max_players_per_team,
         n_squads=args.keep_squad,
     )
@@ -372,6 +370,13 @@ def main():
             )
             <= args.max_def_per_team
         ]
+
+    # Sort lineups by TSscore.
+    squads = sorted(
+        squads,
+        key=lambda x: helpers.tsscore(x.players),
+        reverse=True,
+    )
 
     for player, cnt in collections.Counter(
         p for squad in squads for p in squad.players
