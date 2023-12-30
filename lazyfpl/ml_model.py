@@ -334,12 +334,13 @@ def main():
 
     with tqdm(
         ascii=True,
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
+        ncols=120,
         total=len(players),
         unit_divisor=1_000,
         unit_scale=True,
     ) as bar:
         for player in players:
+            bar.set_postfix_str(player.name)
             try:
                 m = train(
                     player,
