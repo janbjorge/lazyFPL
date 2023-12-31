@@ -35,7 +35,7 @@ def display(trans: Transfer) -> None:
             f"{b.webname:<{max_len_in_name}} - "
             f"{b.team:<{max_len_in_team}} {b.xP:.1f}"
         )
-    print(f"OxP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
+    print(f"xP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
     # log.write(f"TS  gain: {(helpers.tsscore(bought) - helpers.tsscore(sold)):.1f}")
 
 
@@ -232,6 +232,7 @@ def main() -> None:
     print("\n>>>> Current team")
     team = fetch.my_team()
     print(team)
+    print()
 
     transfers = sorted(
         transfer(

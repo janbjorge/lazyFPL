@@ -119,18 +119,8 @@ def players() -> list[structures.Player]:
                 team=game.team,
                 upcoming=game.upcoming,
                 webname=webname,
-                team_strength_attack_home=game.team_strength_attack_home,
-                team_strength_attack_away=game.team_strength_attack_away,
-                team_strength_defence_home=game.team_strength_defence_home,
-                team_strength_defence_away=game.team_strength_defence_away,
-                team_strength_overall_home=game.team_strength_overall_home,
-                team_strength_overall_away=game.team_strength_overall_away,
-                opponent_strength_attack_home=game.opponent_strength_attack_home,
-                opponent_strength_attack_away=game.opponent_strength_attack_away,
-                opponent_strength_defence_home=game.opponent_strength_defence_home,
-                opponent_strength_defence_away=game.opponent_strength_defence_away,
-                opponent_strength_overall_home=game.opponent_strength_overall_home,
-                opponent_strength_overall_away=game.opponent_trength_overall_away,
+                team_strength=game.team_strength,
+                opponent_strength=game.opponent_strength,
             )
             for game in games
         ]

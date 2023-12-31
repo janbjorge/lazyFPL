@@ -25,18 +25,8 @@ class NormalizedFeatures:
     points: float
     minutes: float
     opponent: tuple[float, ...]
-    opponent_strength_attack_away: float
-    opponent_strength_attack_home: float
-    opponent_strength_defence_away: float
-    opponent_strength_defence_home: float
-    opponent_strength_overall_away: float
-    opponent_strength_overall_home: float
-    team_strength_attack_away: float
-    team_strength_attack_home: float
-    team_strength_defence_away: float
-    team_strength_defence_home: float
-    team_strength_overall_away: float
-    team_strength_overall_home: float
+    team_strength: float
+    opponent_strength: float
 
     def flattend(self) -> tuple[float, ...]:
         def _flatter(obj):
@@ -95,49 +85,14 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
     """Generates and returns normalized features for a given fixture."""
     assert f.points is not None
     p_scale = database.points()
-    s_scale = database.strengths()
     m_scale = database.minutes()
     return NormalizedFeatures(
         at_home=(f.at_home - 0.5) / 0.5,
         points=p_scale.normalize(f.points),
         minutes=m_scale.normalize(f.minutes or 0),
         opponent=onehot_team_name(f.opponent),
-        opponent_strength_attack_away=s_scale.strength_attack_away.normalize(
-            f.opponent_strength_attack_away,
-        ),
-        opponent_strength_attack_home=s_scale.strength_attack_home.normalize(
-            f.opponent_strength_attack_home,
-        ),
-        opponent_strength_defence_away=s_scale.strength_defence_away.normalize(
-            f.opponent_strength_defence_away,
-        ),
-        opponent_strength_defence_home=s_scale.strength_defence_home.normalize(
-            f.opponent_strength_defence_home,
-        ),
-        opponent_strength_overall_away=s_scale.strength_overall_away.normalize(
-            f.opponent_strength_overall_away,
-        ),
-        opponent_strength_overall_home=s_scale.strength_overall_home.normalize(
-            f.opponent_strength_overall_home,
-        ),
-        team_strength_attack_away=s_scale.strength_attack_away.normalize(
-            f.team_strength_attack_away,
-        ),
-        team_strength_attack_home=s_scale.strength_attack_home.normalize(
-            f.team_strength_attack_home,
-        ),
-        team_strength_defence_away=s_scale.strength_defence_away.normalize(
-            f.team_strength_defence_away,
-        ),
-        team_strength_defence_home=s_scale.strength_defence_home.normalize(
-            f.team_strength_defence_home,
-        ),
-        team_strength_overall_away=s_scale.strength_overall_away.normalize(
-            f.team_strength_overall_away,
-        ),
-        team_strength_overall_home=s_scale.strength_overall_home.normalize(
-            f.team_strength_overall_home,
-        ),
+        team_strength=f.team_strength / 5,
+        opponent_strength=f.opponent_strength / 5,
     )
 
 

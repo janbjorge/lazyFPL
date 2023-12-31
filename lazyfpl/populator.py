@@ -128,12 +128,7 @@ def initialize_database() -> None:
             name TEXT NOT NULL,
             web_team_id INTEGER NOT NULL,
             session TEXT NOT NULL,
-            strength_attack_away INTEGER NOT NULL,
-            strength_attack_home INTEGER NOT NULL,
-            strength_defence_away INTEGER NOT NULL,
-            strength_defence_home INTEGER NOT NULL,
-            strength_overall_away INTEGER NOT NULL,
-            strength_overall_home INTEGER NOT NULL,
+            strength INTEGER NOT NULL,
             UNIQUE(name, session)
         )
     """
@@ -189,13 +184,14 @@ def populate_teams() -> None:
             name,
             session,
             web_team_id,
+            strength,
             strength_attack_away,
             strength_attack_home,
             strength_defence_away,
             strength_defence_home,
             strength_overall_away,
             strength_overall_home
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     """
     for session, teams in tqdm(
         past_team_lists().items(),
@@ -212,12 +208,7 @@ def populate_teams() -> None:
                     team.name,
                     session,
                     team.id,
-                    team.strength_attack_away,
-                    team.strength_attack_home,
-                    team.strength_defence_away,
-                    team.strength_defence_home,
-                    team.strength_overall_away,
-                    team.strength_overall_home,
+                    team.strength,
                 ),
             )
 

@@ -14,22 +14,34 @@ if __name__ == "__main__":
         help="Top N players per position. (default: %(default)s)",
         type=int,
     )
+    parser.add_argument(
+        "--no-news",
+        action="store_true",
+        help="Drop players with news attched to them. (default: %(default)s)",
+    )
     args = parser.parse_args()
 
-    players = list(
-        itertools.chain(
-            *[
-                list(p)[: args.top] if args.top else list(p)
-                for _, p in itertools.groupby(
-                    sorted(
-                        fetch.players(),
-                        key=lambda x: (x.position, x.xP or 0),
-                        reverse=True,
-                    ),
-                    key=lambda x: x.position,
-                )
-            ]
-        )
+    players = sorted(
+        fetch.players(),
+        key=lambda x: (x.position, x.xP or 0),
+        reverse=True,
     )
 
-    print(structures.Squad(players))
+    if args.no_news:
+        players = [p for p in players if not p.news]
+
+    print(
+        structures.Squad(
+            list(
+                itertools.chain.from_iterable(
+                    [
+                        list(p)[: args.top]
+                        for _, p in itertools.groupby(
+                            players,
+                            key=lambda x: x.position,
+                        )
+                    ]
+                )
+            )
+        )
+    )

@@ -25,7 +25,7 @@ class SampleSummary:
     variance: float
 
     @staticmethod
-    def fromiter(values: T.Iterable[float]) -> "SampleSummary":
+    def fromiter(values: T.Iterable[float]) -> SampleSummary:
         """Creates a SampleSummary from an iterable of float values."""
         return SampleSummary(
             mean=statistics.mean(values),
@@ -36,16 +36,6 @@ class SampleSummary:
     def normalize(self, value: float) -> float:
         """Normalizes a value based on the mean and variance of the sample."""
         return (value - self.mean) / self.variance
-
-
-@dataclasses.dataclass(frozen=True)
-class Strenghts:
-    strength_attack_away: SampleSummary
-    strength_attack_home: SampleSummary
-    strength_defence_away: SampleSummary
-    strength_defence_home: SampleSummary
-    strength_overall_away: SampleSummary
-    strength_overall_home: SampleSummary
 
 
 class Game(pydantic.BaseModel):
@@ -62,18 +52,8 @@ class Game(pydantic.BaseModel):
     team: str
     upcoming: bool
     webname: str
-    team_strength_attack_home: int
-    team_strength_attack_away: int
-    team_strength_defence_home: int
-    team_strength_defence_away: int
-    team_strength_overall_home: int
-    team_strength_overall_away: int
-    opponent_strength_attack_home: int
-    opponent_strength_attack_away: int
-    opponent_strength_defence_home: int
-    opponent_strength_defence_away: int
-    opponent_strength_overall_home: int
-    opponent_trength_overall_away: int
+    team_strength: int
+    opponent_strength: int
 
 
 @functools.cache
@@ -110,18 +90,8 @@ def games() -> list[Game]:
             (select webname from player where id = game.player_id)                 as webname,
             (select name from team where opponent = team.id)                       as opponent,
             (select name from team where team = team.id)                           as team,
-            (select strength_attack_home from team where team.id = game.team)      as team_strength_attack_home,
-            (select strength_attack_away from team where team.id = game.team)      as team_strength_attack_away,
-            (select strength_defence_home from team where team.id = game.team)     as team_strength_defence_home,
-            (select strength_defence_away from team where team.id = game.team)     as team_strength_defence_away,
-            (select strength_overall_home from team where team.id = game.team)     as team_strength_overall_home,
-            (select strength_overall_away from team where team.id = game.team)     as team_strength_overall_away,
-            (select strength_attack_home from team where team.id = game.opponent)  as opponent_strength_attack_home,
-            (select strength_attack_away from team where team.id = game.opponent)  as opponent_strength_attack_away,
-            (select strength_defence_home from team where team.id = game.opponent) as opponent_strength_defence_home,
-            (select strength_defence_away from team where team.id = game.opponent) as opponent_strength_defence_away,
-            (select strength_overall_home from team where team.id = game.opponent) as opponent_strength_overall_home,
-            (select strength_overall_away from team where team.id = game.opponent) as opponent_trength_overall_away
+            (select strength from team where team.id = game.team)                  as team_strength,
+            (select strength from team where team.id = game.opponent)              as opponent_strength
         from
             game
     """
@@ -228,41 +198,3 @@ def minutes() -> SampleSummary:
         )
     ]
     return SampleSummary.fromiter(p)
-
-
-@functools.cache
-def strengths() -> Strenghts:
-    """Strenghts object with aggregated team strengths."""
-    rows = execute(
-        """
-        SELECT
-            strength_attack_away,
-            strength_attack_home,
-            strength_defence_away,
-            strength_defence_home,
-            strength_overall_away,
-            strength_overall_home
-        FROM
-            team
-    """
-    )
-    return Strenghts(
-        strength_attack_away=SampleSummary.fromiter(
-            [r["strength_attack_away"] for r in rows]
-        ),
-        strength_attack_home=SampleSummary.fromiter(
-            [r["strength_attack_home"] for r in rows]
-        ),
-        strength_defence_away=SampleSummary.fromiter(
-            [r["strength_defence_away"] for r in rows]
-        ),
-        strength_defence_home=SampleSummary.fromiter(
-            [r["strength_defence_home"] for r in rows]
-        ),
-        strength_overall_away=SampleSummary.fromiter(
-            [r["strength_overall_away"] for r in rows]
-        ),
-        strength_overall_home=SampleSummary.fromiter(
-            [r["strength_overall_home"] for r in rows]
-        ),
-    )

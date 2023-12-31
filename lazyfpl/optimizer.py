@@ -374,8 +374,7 @@ def main():
     # Sort lineups by TSscore.
     squads = sorted(
         squads,
-        key=lambda x: helpers.tsscore(x.players),
-        reverse=True,
+        key=lambda x: -helpers.tsscore(x.players),
     )
 
     for player, cnt in collections.Counter(
@@ -383,7 +382,7 @@ def main():
     ).items():
         print(player, round(cnt / len(squads) * 100, 2))
 
-    print("\n\n".join(str(s) for s in squads[-10:]))
+    print("\n\n".join(str(s) for s in squads))
 
     mincxp = min(s.CxP() for s in squads)
     maxxcp = max(s.CxP() for s in squads)

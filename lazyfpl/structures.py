@@ -12,17 +12,6 @@ from lazyfpl import conf, database, helpers
 
 
 @dataclasses.dataclass(frozen=True)
-class Difficulty:
-    attack: float
-    defence: float
-    overall: float
-
-    @property
-    def mean(self):
-        return statistics.mean((self.attack, self.defence, self.overall))
-
-
-@dataclasses.dataclass(frozen=True)
 class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime
@@ -34,47 +23,8 @@ class Fixture:
     team: str
     upcoming: bool
     webname: str
-    team_strength_attack_home: int
-    team_strength_attack_away: int
-    team_strength_defence_home: int
-    team_strength_defence_away: int
-    team_strength_overall_home: int
-    team_strength_overall_away: int
-    opponent_strength_attack_home: int
-    opponent_strength_attack_away: int
-    opponent_strength_defence_home: int
-    opponent_strength_defence_away: int
-    opponent_strength_overall_home: int
-    opponent_strength_overall_away: int
-
-    @property
-    def relative(self) -> Difficulty:
-        if self.at_home:
-            attack = (
-                self.team_strength_attack_home - self.opponent_strength_defence_away
-            ) / (self.team_strength_attack_home + self.opponent_strength_defence_away)
-            defence = (
-                self.team_strength_defence_home - self.opponent_strength_attack_away
-            ) / (self.team_strength_defence_home + self.opponent_strength_attack_away)
-            overall = (
-                self.team_strength_overall_home - self.opponent_strength_overall_away
-            ) / (self.team_strength_overall_home + self.opponent_strength_overall_away)
-        else:
-            attack = (
-                self.team_strength_attack_away - self.opponent_strength_defence_home
-            ) / (self.team_strength_attack_away + self.opponent_strength_defence_home)
-            defence = (
-                self.team_strength_defence_away - self.opponent_strength_attack_home
-            ) / (self.team_strength_defence_away + self.opponent_strength_attack_home)
-            overall = (
-                self.team_strength_overall_away - self.opponent_strength_overall_home
-            ) / (self.team_strength_overall_away + self.opponent_strength_overall_home)
-
-        return Difficulty(
-            attack=attack,
-            defence=defence,
-            overall=overall,
-        )
+    team_strength: int
+    opponent_strength: int
 
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
@@ -107,9 +57,9 @@ class Player:
         except statistics.StatisticsError:
             return 0.0
 
-    def upcoming_difficulty(self) -> float:
+    def upcoming_difficulty(self) -> int:
         upcoming = [f for f in self.fixutres if f.upcoming][: conf.lookahead]
-        return statistics.mean(f.relative.mean for f in upcoming)
+        return sum(f.team_strength - f.opponent_strength for f in upcoming)
 
     @property
     def next_opponent(self) -> str:
@@ -129,8 +79,8 @@ class Player:
 
     def __str__(self):
         return (
-            f"{(self.xP or 0):<6.1f} {self.price:<6.1f} {self.tp():<4} "
-            f"{self.upcoming_difficulty()*10:<8.1f} {self.team:<15} "
+            f"{(self.xP or 0):<6.1f} {self.price/10:<6.1f} {self.tp():<4} "
+            f"{self.upcoming_difficulty():<4} {self.team:<15} "
             f"{self.position:<9} {self.webname:<20} "
             f"{(' - '.join(self.upcoming_opponents()[:conf.lookahead])):<50} "
             f"{self.news}"
@@ -184,7 +134,7 @@ class Squad:
             f"TSscore: {self.tsscore():.2f}"
         )
         yield (
-            "BIS  xP     Price  TP   UD       Team            Position  Player"
+            "BIS  xP     Price  TP   UD   Team            Position  Player"
             + " " * 15
             + "Upcoming"
             + " " * 43
@@ -279,11 +229,5 @@ class Team(pydantic.BaseModel):
     pulse_id: int
     short_name: str
     strength: int
-    strength_attack_away: int
-    strength_attack_home: int
-    strength_defence_away: int
-    strength_defence_home: int
-    strength_overall_away: int
-    strength_overall_home: int
     unavailable: bool
     win: int
