@@ -16,15 +16,15 @@ class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime
     minutes: T.Optional[int]
+    opponent_strength: int
     opponent: str
     player: str
     points: T.Optional[int]
     session: database.SESSIONS
+    team_strength: int
     team: str
     upcoming: bool
     webname: str
-    team_strength: int
-    opponent_strength: int
 
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
@@ -34,6 +34,7 @@ class Player:
     news: str = dataclasses.field(compare=True)
     position: database.POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
+    selected: T.Optional[int] = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
     xP: T.Optional[float]
@@ -49,7 +50,7 @@ class Player:
                 (
                     f.minutes or 0
                     for f in sorted(
-                        (f for f in self.fixutres if f.minutes is not None),
+                        (f for f in self.fixutres if not f.upcoming),
                         key=lambda x: x.kickoff_time,
                     )[-last:]
                 )
@@ -60,13 +61,6 @@ class Player:
     def upcoming_difficulty(self) -> int:
         upcoming = [f for f in self.fixutres if f.upcoming][: conf.lookahead]
         return sum(f.team_strength - f.opponent_strength for f in upcoming)
-
-    @property
-    def next_opponent(self) -> str:
-        return min(
-            (f for f in self.fixutres if f.upcoming),
-            key=lambda f: f.kickoff_time,
-        ).opponent
 
     def upcoming_opponents(self) -> list[str]:
         return [
@@ -158,10 +152,6 @@ class Squad:
 
 
 class HistoricGame(pydantic.BaseModel):
-    name: str
-    position: database.POSITIONS
-    team: str
-    xP: float
     assists: int
     bonus: int
     bps: int
@@ -171,20 +161,24 @@ class HistoricGame(pydantic.BaseModel):
     fixture: float
     goals_conceded: float
     goals_scored: float
+    GW: int
     ict_index: float
     influence: float
     kickoff_time: datetime.datetime
     minutes: int
+    name: str
     opponent_team: int
     own_goals: int
     penalties_missed: int
     penalties_saved: int
+    position: database.POSITIONS
     red_cards: int
     round: int
     saves: int
     selected: int
     team_a_score: int
     team_h_score: int
+    team: str
     threat: float
     total_points: int
     transfers_balance: int
@@ -192,8 +186,8 @@ class HistoricGame(pydantic.BaseModel):
     transfers_out: int
     value: int
     was_home: bool
+    xP: float
     yellow_cards: int
-    GW: int
 
     @pydantic.field_validator("position", mode="before")
     def gk_to_gkp(cls, value: str) -> str:

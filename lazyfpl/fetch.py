@@ -141,6 +141,7 @@ def players() -> list[structures.Player]:
                 team=team,
                 webname=database.webname(games[-1].player_id),
                 xP=None,
+                selected=[g for g in games if not g.upcoming][-1].selected,
             )
         )
 

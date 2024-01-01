@@ -22,11 +22,11 @@ if conf.debug:
 @dataclasses.dataclass
 class NormalizedFeatures:
     at_home: float
-    points: float
     minutes: float
-    opponent: tuple[float, ...]
-    team_strength: float
     opponent_strength: float
+    opponent: tuple[float, ...]
+    points: float
+    team_strength: float
 
     def flattend(self) -> tuple[float, ...]:
         def _flatter(obj):
@@ -88,11 +88,11 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
     m_scale = database.minutes()
     return NormalizedFeatures(
         at_home=(f.at_home - 0.5) / 0.5,
-        points=p_scale.normalize(f.points),
         minutes=m_scale.normalize(f.minutes or 0),
+        opponent_strength=(f.opponent_strength - 3) / 2,
         opponent=onehot_team_name(f.opponent),
-        team_strength=f.team_strength / 5,
-        opponent_strength=f.opponent_strength / 5,
+        points=p_scale.normalize(f.points),
+        team_strength=(f.team_strength - 3) / 2,
     )
 
 
@@ -317,7 +317,7 @@ def main():
                     f"{xP(player):<6.1f} "
                     + f"{player.name} ("
                     + f"{player.team} - "
-                    + f"{player.next_opponent})"
+                    + f"{player.upcoming_opponents()[0]})"
                 )
             finally:
                 bar.update(1)

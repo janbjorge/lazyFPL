@@ -162,6 +162,7 @@ def initialize_database() -> None:
             session TEXT NOT NULL,
             team INTEGER NOT NULL,
             upcoming INTEGER NOT NULL,
+            selected INTEGER NOT NULL,
             FOREIGN KEY(opponent) REFERENCES team(id),
             FOREIGN KEY(player_id) REFERENCES player(id),
             FOREIGN KEY(team) REFERENCES team(id)
@@ -184,14 +185,8 @@ def populate_teams() -> None:
             name,
             session,
             web_team_id,
-            strength,
-            strength_attack_away,
-            strength_attack_home,
-            strength_defence_away,
-            strength_defence_home,
-            strength_overall_away,
-            strength_overall_home
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            strength
+        ) VALUES (?, ?, ?, ?);
     """
     for session, teams in tqdm(
         past_team_lists().items(),
@@ -263,12 +258,15 @@ def populate_games() -> None:
             position,
             player_id,
             team,
-            opponent
+            opponent,
+
+            selected
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?,
             (SELECT id FROM team WHERE session = ? AND name = ?),
-            (SELECT id FROM team WHERE session = ? AND name = ?)
+            (SELECT id FROM team WHERE session = ? AND name = ?),
+            ?
         );
     """
     no_pid = set[str]()  # Print once per player name, avoid cli-spam.
@@ -315,6 +313,7 @@ def populate_games() -> None:
                         historic.team,
                         session,
                         past_team_lookup(historic.opponent_team, session),
+                        historic.selected,
                     ),
                 )
             except database.sqlite3.IntegrityError as e:
@@ -366,6 +365,7 @@ def populate_games() -> None:
                         team,
                         database.CURRENT_SESSION,
                         opponent,
+                        -1,
                     ),
                 )
 

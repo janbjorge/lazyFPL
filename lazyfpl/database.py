@@ -54,6 +54,7 @@ class Game(pydantic.BaseModel):
     webname: str
     team_strength: int
     opponent_strength: int
+    selected: int
 
 
 @functools.cache
@@ -85,6 +86,7 @@ def games() -> list[Game]:
             session,
             upcoming,
             player_id,
+            selected,
             (select name from player where id = game.player_id)                    as player,
             (select news from player where id = game.player_id)                    as news,
             (select webname from player where id = game.player_id)                 as webname,
