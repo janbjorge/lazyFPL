@@ -207,17 +207,17 @@ class HistoricGame(pydantic.BaseModel):
 class UpcommingGame(pydantic.BaseModel):
     code: int
     difficulty: int
-    event_name: str | None
-    event: int | None
+    event_name: str | None = pydantic.Field(default=None)
+    event: int | None = pydantic.Field(default=None)
     finished: bool
     id: int
     is_home: bool
-    kickoff_time: datetime.datetime | None
+    kickoff_time: datetime.datetime | None = pydantic.Field(default=None)
     minutes: int
     provisional_start_time: bool
-    team_a_score: int | None
+    team_a_score: int | None = pydantic.Field(default=None)
     team_a: int
-    team_h_score: int | None
+    team_h_score: int | None = pydantic.Field(default=None)
     team_h: int
 
 

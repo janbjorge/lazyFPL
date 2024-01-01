@@ -72,6 +72,15 @@ def execute(sql: str, parameters: tuple = ()) -> list[dict]:
         return []
 
 
+def executemany(sql: str, parameters: tuple = ()) -> list[dict]:
+    """Executes a SQL query and returns the result as a list of dictionaries."""
+    with connect() as conn:
+        cursor = conn.executemany(sql, parameters)
+        if desc := [x[0] for x in cursor.description or []]:
+            return [dict(zip(desc, row)) for row in cursor.fetchall()]
+        return []
+
+
 @functools.cache
 def games() -> list[Game]:
     """Retrieves a list of Game objects representing football games from the database."""

@@ -58,7 +58,7 @@ def db_name_pid() -> dict[str, int]:
 
 
 @functools.cache
-def player_id_fuzzer(name: str) -> int:
+def player_id_fuzzer(name: str) -> int | None:
     """Attempts to find a player ID in the database matching the
     given name, with some flexibility for variations."""
     for dname, pid in db_name_pid().items():
@@ -69,7 +69,7 @@ def player_id_fuzzer(name: str) -> int:
         if all(n in name.casefold() for n in dname.casefold().split()):
             return pid
 
-    raise KeyError(name)
+    return None
 
 
 def session_from_url(url: str) -> str:
@@ -269,8 +269,8 @@ def populate_games() -> None:
             ?
         );
     """
-    no_pid = set[str]()  # Print once per player name, avoid cli-spam.
     for session, games in past_game_lists().items():
+        to_insert = []
         for game in tqdm(
             games,
             ascii=True,
@@ -289,17 +289,8 @@ def populate_games() -> None:
                     traceback.print_exception(e)
                 continue
 
-            try:
-                pid = player_id_fuzzer(historic.name)
-            except KeyError as e:
-                if conf.debug and historic.name not in no_pid:
-                    traceback.print_exception(e)
-                no_pid.add(historic.name)
-                continue
-
-            try:
-                database.execute(
-                    game_sql,
+            if pid := player_id_fuzzer(historic.name):
+                to_insert.append(
                     (
                         session,
                         False,
@@ -316,11 +307,7 @@ def populate_games() -> None:
                         historic.selected,
                     ),
                 )
-            except database.sqlite3.IntegrityError as e:
-                # The player does not play this year.
-                if conf.debug:
-                    traceback.print_exception(e)
-                continue
+        database.executemany(game_sql, tuple(to_insert))
 
     now = now_tz_utc()
     upcoming_games: list[int] = [
