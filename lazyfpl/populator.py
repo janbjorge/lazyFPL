@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import datetime
 import functools
 import io
-import traceback
 import urllib.parse as up
 
-import pydantic
 import pytz
 import requests
 from dateutil.parser import parse as dtparser
 from tqdm.std import tqdm
 
-from lazyfpl import conf, database, structures
+from lazyfpl import database, structures
 
 
 def now_tz_utc() -> datetime.datetime:
@@ -271,7 +270,7 @@ def populate_games() -> None:
     """
     for session, games in past_game_lists().items():
         to_insert = []
-        for game in tqdm(
+        for fixture in tqdm(
             games,
             ascii=True,
             ncols=120,
@@ -279,16 +278,7 @@ def populate_games() -> None:
             unit_divisor=1_000,
             unit_scale=True,
         ):
-            # Dafuq pydantic?!
-            game.pop(None, None)
-
-            try:
-                historic = structures.HistoricGame.model_validate(game)
-            except pydantic.ValidationError as e:
-                if conf.debug:
-                    traceback.print_exception(e)
-                continue
-
+            historic = structures.HistoricGame.model_validate(fixture)
             if pid := player_id_fuzzer(historic.name):
                 to_insert.append(
                     (
@@ -313,48 +303,65 @@ def populate_games() -> None:
     upcoming_games: list[int] = [
         e["id"] for e in bootstrap()["events"] if dtparser(e["deadline_time"]) > now
     ]
-    for ele in tqdm(
-        bootstrap()["elements"],
-        ascii=True,
-        ncols=120,
-        postfix="Populate upcoming games",
-        unit_divisor=1_000,
-        unit_scale=True,
-    ):
-        fullname = f'{ele["first_name"]} {ele["second_name"]}'
-        team = upcoming_team_id_to_name(ele["team"])
-        for game in summary(ele["id"])["fixtures"]:
-            try:
-                upcoming = structures.UpcommingGame.model_validate(game)
-            except pydantic.ValidationError as e:
-                if conf.debug:
-                    traceback.print_exception(e)
-                continue
 
-            # A past game, data allready logged.
-            if upcoming.event in upcoming_games:
-                team_h = upcoming_team_id_to_name(upcoming.team_h)
-                team_a = upcoming_team_id_to_name(upcoming.team_a)
-                is_home = team == team_h
-                opponent = list({team, team_a, team_h} - {team})[0]
-                database.execute(
-                    game_sql,
-                    (
-                        database.CURRENT_SESSION,
-                        True,
-                        is_home,
-                        upcoming.kickoff_time,
-                        None,
-                        None,
-                        upcoming_position(fullname),
-                        player_id_fuzzer(fullname),
-                        database.CURRENT_SESSION,
-                        team,
-                        database.CURRENT_SESSION,
-                        opponent,
-                        -1,
-                    ),
+    jobs = list[concurrent.futures.Future]()
+
+    def pooled_summary(
+        id: int,
+        fullname: str,
+        team: str,
+    ) -> tuple[dict, str, str]:
+        return summary(id)["fixtures"], fullname, team
+
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        for ele in bootstrap()["elements"]:
+            jobs.append(
+                pool.submit(
+                    pooled_summary,
+                    ele["id"],
+                    " ".join((ele["first_name"], ele["second_name"])),
+                    upcoming_team_id_to_name(ele["team"]),
                 )
+            )
+
+        for done in tqdm(
+            concurrent.futures.as_completed(jobs),
+            ascii=True,
+            ncols=120,
+            postfix="Populate upcoming games",
+            total=len(jobs),
+            unit_divisor=1_000,
+            unit_scale=True,
+        ):
+            fixtures, fullname, team = done.result()
+            for fixture in fixtures:
+                upcoming = structures.UpcommingGame.model_validate(fixture)
+                if not upcoming.event_name:
+                    continue
+
+                if upcoming.event in upcoming_games:
+                    team_h = upcoming_team_id_to_name(upcoming.team_h)
+                    team_a = upcoming_team_id_to_name(upcoming.team_a)
+                    is_home = team == team_h
+                    opponent = list({team, team_a, team_h} - {team})[0]
+                    database.execute(
+                        game_sql,
+                        (
+                            database.CURRENT_SESSION,
+                            True,
+                            is_home,
+                            upcoming.kickoff_time,
+                            None,
+                            None,
+                            upcoming_position(fullname),
+                            player_id_fuzzer(fullname),
+                            database.CURRENT_SESSION,
+                            team,
+                            database.CURRENT_SESSION,
+                            opponent,
+                            -1,
+                        ),
+                    )
 
 
 @functools.cache

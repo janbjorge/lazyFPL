@@ -183,6 +183,8 @@ def train(
 def load_model(player: structures.Player) -> Net:
     """Loads a trained model for the specified player."""
     pid = populator.player_id_fuzzer(player.name)
+    if not pid:
+        raise KeyError(player.name)
     if bts := database.load_model(pid):
         ms = pickle.loads(bts)
         n = Net(nfeature=ms["nfeature"], rnn_hidden=ms["rnn_hidden"])
@@ -193,8 +195,11 @@ def load_model(player: structures.Player) -> Net:
 
 def save_model(player: structures.Player, m: Net) -> None:
     """Saves the trained model for the specified player."""
+    pid = populator.player_id_fuzzer(player.name)
+    if not pid:
+        raise KeyError(player.name)
     database.save_model(
-        populator.player_id_fuzzer(player.name),
+        pid,
         pickle.dumps(
             {
                 "rnn_hidden": m.rnn_hidden,
