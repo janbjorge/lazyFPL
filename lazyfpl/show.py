@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import itertools
 
-from lazyfpl import fetch, structures
+from tabulate import tabulate
+
+from lazyfpl import conf, fetch, helpers
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -30,18 +32,23 @@ if __name__ == "__main__":
     if args.no_news:
         players = [p for p in players if not p.news]
 
-    print(
-        structures.Squad(
-            list(
-                itertools.chain.from_iterable(
-                    [
-                        list(p)[: args.top]
-                        for _, p in itertools.groupby(
-                            players,
-                            key=lambda x: x.position,
-                        )
-                    ]
+    players = list(
+        itertools.chain.from_iterable(
+            [
+                list(p)[: args.top]
+                for _, p in itertools.groupby(
+                    players,
+                    key=lambda x: x.position,
                 )
-            )
+            ]
         )
+    )
+    bis = helpers.best_lineup(players)
+
+    print(
+        tabulate(
+            [{"BIS": "X" if p in bis else ""} | p.display() for p in players],
+            tablefmt=conf.tabulate_format,
+            headers={},
+        ),
     )

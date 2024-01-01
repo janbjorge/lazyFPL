@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-import itertools
 import statistics
-import typing as T
+from typing import Generator, Sequence
 
 import pydantic
+from tabulate import tabulate
 
 from lazyfpl import conf, database, helpers
 
@@ -15,11 +15,11 @@ from lazyfpl import conf, database, helpers
 class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime
-    minutes: T.Optional[int]
+    minutes: int | None
     opponent_strength: int
     opponent: str
     player: str
-    points: T.Optional[int]
+    points: int | None
     session: database.SESSIONS
     team_strength: int
     team: str
@@ -34,10 +34,10 @@ class Player:
     news: str = dataclasses.field(compare=True)
     position: database.POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
-    selected: T.Optional[int] = dataclasses.field(compare=False)
+    selected: int | None = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
-    xP: T.Optional[float]
+    xP: float | None
 
     def tp(self, session: database.SESSIONS = database.CURRENT_SESSION) -> int:
         return sum(f.points or 0 for f in self.fixutres if f.session == session)
@@ -71,18 +71,36 @@ class Player:
             )
         ]
 
-    def __str__(self):
-        return (
-            f"{(self.xP or 0):<6.1f} {self.price/10:<6.1f} {self.tp():<4} "
-            f"{self.upcoming_difficulty():<4} {self.team:<15} "
-            f"{self.position:<9} {self.webname:<20} "
-            f"{(' - '.join(self.upcoming_opponents()[:conf.lookahead])):<50} "
-            f"{self.news}"
-        )
+    def str_upcoming_opponents(self) -> str:
+        return " - ".join(self.upcoming_opponents()[: conf.lookahead])
+
+    def __str__(self) -> str:
+        raise NotImplementedError
+
+    def display(
+        self,
+        fields: tuple[tuple[str, str], ...] = (
+            ("xP", "xP"),
+            ("price", "Price"),
+            ("tp", "TP"),
+            ("upcoming_difficulty", "Upcoming difficulty"),
+            ("selected", "Selected"),
+            ("name", "Name"),
+            ("webname", "Webname"),
+            ("team", "Team"),
+            ("position", "Position"),
+            ("str_upcoming_opponents", "Upcoming opponents"),
+            ("news", "News"),
+        ),
+    ) -> dict[str, str | float]:
+        return {
+            to: att() if callable(att := getattr(self, frm)) else att
+            for frm, to in fields
+        }
 
 
 class Squad:
-    def __init__(self, players: T.Sequence[Player]):
+    def __init__(self, players: Sequence[Player]):
         self.players = players
 
     def price(self) -> int:
@@ -119,33 +137,25 @@ class Squad:
     def __len__(self) -> int:
         return len(self.players)
 
-    def __str(self):
-        pospri = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
+    def __str(self) -> Generator[str, None, None]:
         yield f"Price: {self.price()/10} Size: {len(self.players)}"
         yield f"LxP: {self.LxP():.1f} SxP: {self.SxP():.1f} CxP: {self.CxP():.1f}"
         yield (
             f"Schedule score: {self.sscore()} Team score: {self.tscore()} "
             f"TSscore: {self.tsscore():.2f}"
         )
-        yield (
-            "BIS  xP     Price  TP   UD   Team            Position  Player"
-            + " " * 15
-            + "Upcoming"
-            + " " * 43
-            + "News"
-        )
-        for _, players in itertools.groupby(
-            sorted(
-                self.players,
-                key=lambda x: (pospri.get(x.position), x.xP or 0),
-                reverse=True,
-            ),
-            key=lambda x: x.position,
-        ):
-            for player in players:
-                yield ("X    " if player in self.best_lineup() else "     ") + str(
-                    player
+        bis = helpers.best_lineup(self.players)
+        yield tabulate(
+            [
+                {"BIS": "X" if p in bis else ""} | p.display()
+                for p in sorted(
+                    self.players,
+                    key=lambda x: (-helpers.position_order(x.position), -(x.xP or 0)),
                 )
+            ],
+            tablefmt=conf.tabulate_format,
+            headers={},
+        )
 
     def __str__(self) -> str:
         return "\n".join(self.__str())

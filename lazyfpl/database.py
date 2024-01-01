@@ -41,12 +41,12 @@ class SampleSummary:
 class Game(pydantic.BaseModel):
     is_home: bool
     kickoff: datetime.datetime
-    minutes: T.Optional[int]
+    minutes: int | None
     news: str
     opponent: str
     player_id: int
     player: str
-    points: T.Optional[int]
+    points: int | None
     position: POSITIONS
     session: SESSIONS
     team: str

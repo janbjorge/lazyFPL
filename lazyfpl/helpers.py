@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import collections
-from typing import Sequence
+import functools
+from typing import Sequence, get_args
 
-from lazyfpl import conf, structures
+from lazyfpl import conf, database, structures
 
 
 def squad_price(lineup: Sequence[structures.Player]) -> int:
@@ -93,3 +94,8 @@ def tcnt(lineup: Sequence[structures.Player]) -> int:
 def tsscore(lineup: Sequence[structures.Player], n: int = conf.lookahead) -> float:
     """Calculates and returns the total 'team schedule score' for a lineup."""
     return (tcnt(lineup) ** 2 + sscore(lineup, n=n) ** 2) ** 0.5
+
+
+@functools.cache
+def position_order(position: database.POSITIONS) -> int:
+    return {p: n for n, p in enumerate(get_args(database.POSITIONS))}[position]

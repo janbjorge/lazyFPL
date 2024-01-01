@@ -1,12 +1,40 @@
 from __future__ import annotations
 
 import argparse
-import itertools
 
-from lazyfpl import fetch, structures
+from tabulate import tabulate
+
+from lazyfpl import conf, fetch, helpers
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--min-mtm",
+        type=float,
+        default=0.0,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--min-selected",
+        "-mc",
+        default=1_000,
+        help=(
+            "Player must be selected by at least this amunt of"
+            "managers. (default: %(default)s)"
+        ),
+        type=int,
+    )
+    parser.add_argument(
+        "--min-xp",
+        type=float,
+        default=0.0,
+        help="(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-news",
+        action="store_true",
+        help="Drop players with news attched to them. (default: %(default)s)",
+    )
     parser.add_argument(
         "--top",
         "-t",
@@ -14,17 +42,18 @@ if __name__ == "__main__":
         help="Top N players per position. (default: %(default)s)",
         type=int,
     )
-    parser.add_argument(
-        "--no-news",
-        action="store_true",
-        help="Drop players with news attched to them. (default: %(default)s)",
-    )
     args = parser.parse_args()
 
     players = sorted(
-        fetch.players(),
+        [
+            p
+            for p in fetch.players()
+            if p.selected > args.min_selected
+            and (p.xP or 0) > args.min_xp
+            and p.mtm() > args.min_mtm
+        ],
         key=lambda x: (
-            x.position,
+            -helpers.position_order(x.position),
             -(x.xP or 0) / (x.selected or 1),
         ),
     )
@@ -33,17 +62,9 @@ if __name__ == "__main__":
         players = [p for p in players if not p.news]
 
     print(
-        structures.Squad(
-            list(
-                itertools.chain.from_iterable(
-                    [
-                        list(p)[: args.top]
-                        for _, p in itertools.groupby(
-                            players,
-                            key=lambda x: x.position,
-                        )
-                    ]
-                )
-            )
-        )
+        tabulate(
+            [p.display() for p in players],
+            tablefmt=conf.tabulate_format,
+            headers={},
+        ),
     )

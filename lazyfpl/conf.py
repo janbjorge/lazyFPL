@@ -13,6 +13,11 @@ class _Env(pydantic.BaseModel):
         default=3,
         gt=0,
     )
+    db: pathlib.Path = pydantic.Field(
+        alias="FPL_DATABASE",
+        default=pathlib.Path(__file__).parent.parent
+        / pathlib.Path(".database.sqlite3"),
+    )
     debug: bool = pydantic.Field(
         alias="FPL_DEBUG",
         default=False,
@@ -26,14 +31,13 @@ class _Env(pydantic.BaseModel):
         alias="FPL_PROFILE",
         default="",
     )
+    tabulate_format: str = pydantic.Field(
+        alias="FPL_TABULATE_FORMAT",
+        default="tsv",
+    )
     teamid: str = pydantic.Field(
         alias="FPL_TEAMID",
         default="",
-    )
-    db: pathlib.Path = pydantic.Field(
-        alias="FPL_DATABASE",
-        default=pathlib.Path(__file__).parent.parent
-        / pathlib.Path(".database.sqlite3"),
     )
 
 
@@ -42,4 +46,5 @@ db: typing.Final = _Env.model_validate(os.environ).db
 debug: typing.Final = _Env.model_validate(os.environ).debug
 lookahead: typing.Final = _Env.model_validate(os.environ).lookahead
 profile: typing.Final = _Env.model_validate(os.environ).profile
+tabulate_format: typing.Final = _Env.model_validate(os.environ).tabulate_format
 teamid: typing.Final = _Env.model_validate(os.environ).teamid

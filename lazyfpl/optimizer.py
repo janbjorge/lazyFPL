@@ -377,11 +377,6 @@ def main():
         key=lambda x: -helpers.tsscore(x.players),
     )
 
-    for player, cnt in collections.Counter(
-        p for squad in squads for p in squad.players
-    ).items():
-        print(player, round(cnt / len(squads) * 100, 2))
-
     print("\n\n".join(str(s) for s in squads))
 
     mincxp = min(s.CxP() for s in squads)

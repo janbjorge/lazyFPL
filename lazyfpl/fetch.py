@@ -171,7 +171,7 @@ def picks() -> list[dict]:
         cookies={"pl_profile": conf.profile},
     )
     if not response:
-        raise ValueError("Non 2xx status code.")
+        raise RuntimeError("Non 2xx status code.")
 
     return response.json()["picks"]
 
@@ -182,26 +182,3 @@ def my_team() -> structures.Squad:
     """
     webnames = {person(pick["element"]).webname for pick in picks()}
     return structures.Squad([p for p in players() if p.webname in webnames])
-
-
-if __name__ == "__main__":
-    import sys
-
-    to_show = sys.argv[1:]
-    for p in sorted(players(), key=lambda x: (x.team, x.webname)):
-        if p.webname in to_show or p.team in to_show:
-            print(f"{p.webname} ({p.team})")
-            for f in sorted(
-                (f for f in p.fixutres if f.points is not None),
-                key=lambda x: x.kickoff_time,
-                reverse=True,
-            )[: conf.backtrace]:
-                vs = (
-                    f"{f.opponent} vs. {p.team}"
-                    if f.at_home
-                    else f"{p.team} vs. {f.opponent}"
-                )
-                print(
-                    f"  {vs:<30} Points: {f.points} "
-                    "Minutes: {f.minutes} Diff: {f.relative.mean:.1f}"
-                )
