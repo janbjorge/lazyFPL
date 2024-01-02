@@ -30,6 +30,9 @@ The `populator` module is responsible for filling the database with data from ex
 ### `transfer`
 In the `transfer` module, users receive guidance on managing player transfers, influenced by the model's predictions and optimization algorithms. This module helps users make informed decisions about player transfers, combining data-driven insights with strategic planning for improved team performance.
 
+## `differentials`
+The differentials module is a specialized tool designed for the Fantasy Premier League Team Optimizer. It offers analytics to identify potential differential picks in your fantasy football team. Differential picks are players who are not widely selected by other managers but have the potential to score high points, thereby giving you an edge in the competition.
+
 ## Command Line Interface (CLI) Usage
 This application features a CLI, implemented via `argparse`, for straightforward interaction and execution. Below are command examples for key operations:
 
