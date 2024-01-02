@@ -1,11 +1,28 @@
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![image](https://img.shields.io/pypi/v/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
-[![image](https://img.shields.io/pypi/l/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
-[![image](https://img.shields.io/pypi/pyversions/lazyfpl.svg)](https://pypi.python.org/pypi/lazyfpl)
+<p align="center">
+  <a href="https://pypi.python.org/pypi/lazyfpl"><img src="https://github.com/janbjorge/lazyFPL/blob/main/logo.png?raw=true" alt="lazyFPL"></a>
+</p>
 
+<p align="center">
+    <em>Fantasy Premier League Team Optimizer - Win at FPL with Laziness</em>
+</p>
 
-# Fantasy Premier League Team Optimizer - Win at FPL with Laziness
-This Python project, "Fantasy Premier League Team Optimizer", employs data-driven methods for analyzing and optimizing Fantasy Premier League (FPL) team selections. It is an essential tool for FPL players who wish to leverage statistical models and optimization algorithms for a competitive advantage.
+<p align="center">
+<a href="https://github.com/astral-sh/ruff" target="_blank">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Package version">
+</a>
+<a href="https://pypi.python.org/pypi/lazyfpl" target="_blank">
+    <img src="https://img.shields.io/pypi/v/lazyfpl.svg" alt="Package version">
+</a>
+<a href="https://pypi.python.org/pypi/lazyfpl" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/lazyfpl.svg" alt="Package version">
+</a>
+<a href="https://pypi.python.org/pypi/lazyfpl" target="_blank">
+    <img src="https://img.shields.io/pypi/l/lazyfpl.svg" alt="Supported Python versions">
+</a>
+</p>
+
+#
+The _Fantasy Premier League Team Optimizer_ employs data-driven methods for analyzing and optimizing Fantasy Premier League (FPL) team selections. It is an essential tool for FPL players who wish to leverage statistical models and optimization algorithms for a competitive advantage.
 
 ## Why Model Training is Essential
 In this application, training a machine learning model is critical as it allows for nuanced understanding and prediction of FPL player performances. By analyzing historical data, the model identifies patterns and trends, offering forecasts about future player performances. These predictions are invaluable for strategic team selection and transfer decisions, providing users with a significant edge in the game.
