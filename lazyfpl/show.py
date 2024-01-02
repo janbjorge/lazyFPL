@@ -45,6 +45,6 @@ if __name__ == "__main__":
 
     print(
         helpers.tabulater(
-            [{"BIS": "X" if p in bis else ""} | p.display() for p in players],
+            [p.display() | {"BIS": "X" if p in bis else ""} for p in players],
         ),
     )

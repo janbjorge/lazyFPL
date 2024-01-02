@@ -79,24 +79,18 @@ class Player:
     def __str__(self) -> str:
         raise NotImplementedError
 
-    def display(
-        self,
-        fields: tuple[tuple[str, str], ...] = (
-            ("xP", "xP"),
-            ("price", "Price"),
-            ("tp", "TP"),
-            ("upcoming_difficulty", "UD"),
-            ("selected", "Selected"),
-            ("webname", "Webname"),
-            ("team", "Team"),
-            ("position", "Position"),
-            ("str_upcoming_opponents", "Upcoming opponents"),
-            ("news", "News"),
-        ),
-    ) -> dict[str, str | float]:
+    def display(self) -> dict[str, float | str | None]:
         return {
-            to: att() if callable(att := getattr(self, frm)) else att
-            for frm, to in fields
+            "xP": self.xP,
+            "Price": self.price,
+            "TP": self.tp(),
+            "UD": self.upcoming_difficulty(),
+            "Selected": self.selected,
+            "Webname": self.webname,
+            "Team": self.team,
+            "Position": self.position,
+            "Upcoming opponents": self.str_upcoming_opponents(),
+            "News": self.news,
         }
 
 
@@ -148,7 +142,7 @@ class Squad:
         bis = helpers.best_lineup(self.players)
         yield helpers.tabulater(
             [
-                {"BIS": "X" if p in bis else ""} | p.display()
+                p.display() | {"BIS": "X" if p in bis else ""}
                 for p in sorted(
                     self.players,
                     key=lambda x: (-helpers.position_order(x.position), -(x.xP or 0)),

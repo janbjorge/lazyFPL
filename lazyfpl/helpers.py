@@ -103,7 +103,7 @@ def position_order(position: database.POSITIONS) -> int:
     return {p: n for n, p in enumerate(get_args(database.POSITIONS))}[position]
 
 
-def tabulater(tabular_data: list[dict[str, str | float]]) -> str:
+def tabulater(tabular_data: list[dict[str, str | float | None]]) -> str:
     return tabulate(
         tabular_data,
         tablefmt=conf.tabulate_format,
