@@ -51,7 +51,7 @@ class Net(torch.nn.Module):
     def __init__(
         self,
         nfeature: int,
-        rnn_hidden: int = 16,
+        rnn_hidden: int = 4,
     ) -> None:
         super().__init__()
         self.nfeature = nfeature
@@ -291,16 +291,16 @@ def main():
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
+    max_webname = max(len(p.webname) for p in players)
 
     with tqdm(
         ascii=True,
-        ncols=120,
+        ncols=80,
         total=len(players),
-        unit_divisor=1_000,
         unit_scale=True,
     ) as bar:
         for player in players:
-            bar.set_postfix_str(player.name)
+            bar.set_description_str(f"{player.webname:<{max_webname}}")
             try:
                 m = train(
                     player,
@@ -320,9 +320,9 @@ def main():
                 save_model(player, m)
                 bar.write(
                     f"{xP(player):<6.1f} "
-                    + f"{player.name} ("
-                    + f"{player.team} - "
-                    + f"{player.upcoming_opponents()[0]})"
+                    + f"{player.webname} "
+                    + f"({player.team_short}) - "
+                    + f"{player.str_upcoming_opponents()}"
                 )
             finally:
                 bar.update(1)

@@ -118,10 +118,9 @@ def lineups_xp(
 
     with tqdm(
         ascii=True,
-        bar_format="{percentage:3.0f}% | {bar:20} {r_bar}",
         leave=True,
+        ncols=80,
         total=total,
-        unit_divisor=1_000,
         unit_scale=True,
     ) as bar:
         while len(best_squads) < min(n_squads, total) and best_squad_xp > 0:
