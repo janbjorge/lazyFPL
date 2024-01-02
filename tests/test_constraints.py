@@ -13,6 +13,7 @@ player1 = structures.Player(
     price=100,
     selected=11,
     team="TeamA",
+    team_short="TA",
     webname="Player1",
     xP=None,
 )
@@ -24,6 +25,7 @@ player2 = structures.Player(
     price=100,
     selected=22,
     team="TeamA",
+    team_short="TA",
     webname="Player2",
     xP=None,
 )
@@ -35,6 +37,7 @@ player3 = structures.Player(
     price=100,
     selected=33,
     team="TeamB",
+    team_short="TB",
     webname="Player3",
     xP=None,
 )
@@ -46,6 +49,7 @@ player4 = structures.Player(
     price=100,
     selected=44,
     team="TeamC",
+    team_short="TC",
     webname="Player4",
     xP=None,
 )
