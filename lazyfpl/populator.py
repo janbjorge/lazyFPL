@@ -125,6 +125,7 @@ def initialize_database() -> None:
         CREATE TABLE team (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            short_name TEXT NOT NULL,
             web_team_id INTEGER NOT NULL,
             session TEXT NOT NULL,
             strength INTEGER NOT NULL,
@@ -182,17 +183,17 @@ def populate_teams() -> None:
     sql = """
         INSERT INTO team (
             name,
+            short_name,
             session,
             web_team_id,
             strength
-        ) VALUES (?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?);
     """
     for session, teams in tqdm(
         past_team_lists().items(),
         ascii=True,
-        ncols=120,
-        postfix="Populates teams",
-        unit_divisor=1_000,
+        desc="Populates teams        ",
+        ncols=80,
         unit_scale=True,
     ):
         for team in teams:
@@ -200,6 +201,7 @@ def populate_teams() -> None:
                 sql,
                 (
                     team.name,
+                    team.short_name,
                     session,
                     team.id,
                     team.strength,
@@ -224,10 +226,9 @@ def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> N
     for ele in tqdm(
         bootstrap()["elements"],
         ascii=True,
-        unit_divisor=1_000,
+        desc="Populate players       ",
+        ncols=80,
         unit_scale=True,
-        ncols=120,
-        postfix="Populate players",
     ):
         database.execute(
             sql,
@@ -273,9 +274,8 @@ def populate_games() -> None:
         for fixture in tqdm(
             games,
             ascii=True,
-            ncols=120,
-            postfix=f"Populate games: {session}",
-            unit_divisor=1_000,
+            desc=f"Populate games: {session}",
+            ncols=80,
             unit_scale=True,
         ):
             historic = structures.HistoricGame.model_validate(fixture)
@@ -327,10 +327,9 @@ def populate_games() -> None:
         for done in tqdm(
             concurrent.futures.as_completed(jobs),
             ascii=True,
-            ncols=120,
-            postfix="Populate upcoming games",
+            desc="Populate upcoming games",
+            ncols=80,
             total=len(jobs),
-            unit_divisor=1_000,
             unit_scale=True,
         ):
             fixtures, fullname, team = done.result()

@@ -113,10 +113,12 @@ def players() -> list[structures.Player]:
                 kickoff_time=game.kickoff,
                 minutes=game.minutes,
                 opponent=game.opponent,
+                opponent_short=game.opponent_short,
                 player=name,
                 points=game.points,
                 session=game.session,
                 team=game.team,
+                team_short=game.team_short,
                 upcoming=game.upcoming,
                 webname=webname,
                 team_strength=game.team_strength,
@@ -126,7 +128,8 @@ def players() -> list[structures.Player]:
         ]
 
         try:
-            team = [g for g in games if g.upcoming][-1].team
+            # TODO: -1 looks odd.
+            next_upcoming = [g for g in games if g.upcoming][-1]
         except IndexError as e:
             if conf.debug:
                 traceback.print_exception(e)
@@ -138,7 +141,8 @@ def players() -> list[structures.Player]:
                 news=games[-1].news,
                 position=games[-1].position,
                 price=database.price(games[-1].player_id),
-                team=team,
+                team=next_upcoming.team,
+                team_short=next_upcoming.team_short,
                 webname=database.webname(games[-1].player_id),
                 xP=None,
                 selected=[g for g in games if not g.upcoming][-1].selected,

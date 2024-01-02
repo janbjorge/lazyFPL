@@ -16,11 +16,15 @@ class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime
     minutes: int | None
+    opponent: str
+    opponent_short: str
     opponent_strength: int
     opponent: str
     player: str
     points: int | None
     session: database.SESSIONS
+    team: str
+    team_short: str
     team_strength: int
     team: str
     upcoming: bool
@@ -36,6 +40,7 @@ class Player:
     price: int = dataclasses.field(compare=False)
     selected: int | None = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
+    team_short: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
     xP: float | None
 
@@ -83,7 +88,7 @@ class Player:
             ("xP", "xP"),
             ("price", "Price"),
             ("tp", "TP"),
-            ("upcoming_difficulty", "Upcoming difficulty"),
+            ("upcoming_difficulty", "UD"),
             ("selected", "Selected"),
             ("name", "Name"),
             ("webname", "Webname"),
