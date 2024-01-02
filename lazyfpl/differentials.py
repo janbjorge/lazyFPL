@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from tabulate import tabulate
-
-from lazyfpl import conf, fetch, helpers
+from lazyfpl import fetch, helpers
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -62,9 +60,7 @@ if __name__ == "__main__":
         players = [p for p in players if not p.news]
 
     print(
-        tabulate(
+        helpers.tabulater(
             [p.display() for p in players],
-            tablefmt=conf.tabulate_format,
-            headers={},
         ),
     )

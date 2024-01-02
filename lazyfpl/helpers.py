@@ -4,6 +4,8 @@ import collections
 import functools
 from typing import Sequence, get_args
 
+from tabulate import tabulate
+
 from lazyfpl import conf, database, structures
 
 
@@ -99,3 +101,14 @@ def tsscore(lineup: Sequence[structures.Player], n: int = conf.lookahead) -> flo
 @functools.cache
 def position_order(position: database.POSITIONS) -> int:
     return {p: n for n, p in enumerate(get_args(database.POSITIONS))}[position]
+
+
+def tabulater(tabular_data: list[dict[str, str | float]]) -> str:
+    return tabulate(
+        tabular_data,
+        tablefmt=conf.tabulate_format,
+        headers={},
+        numalign="left",
+        rowalign="left",
+        stralign="left",
+    )

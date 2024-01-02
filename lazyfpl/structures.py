@@ -6,7 +6,6 @@ import statistics
 from typing import Generator, Sequence
 
 import pydantic
-from tabulate import tabulate
 
 from lazyfpl import conf, database, helpers
 
@@ -19,14 +18,12 @@ class Fixture:
     opponent: str
     opponent_short: str
     opponent_strength: int
-    opponent: str
     player: str
     points: int | None
     session: database.SESSIONS
     team: str
     team_short: str
     team_strength: int
-    team: str
     upcoming: bool
     webname: str
 
@@ -69,7 +66,7 @@ class Player:
 
     def upcoming_opponents(self) -> list[str]:
         return [
-            x.opponent
+            x.opponent_short
             for x in sorted(
                 (f for f in self.fixutres if f.upcoming),
                 key=lambda f: f.kickoff_time,
@@ -90,7 +87,6 @@ class Player:
             ("tp", "TP"),
             ("upcoming_difficulty", "UD"),
             ("selected", "Selected"),
-            ("name", "Name"),
             ("webname", "Webname"),
             ("team", "Team"),
             ("position", "Position"),
@@ -150,7 +146,7 @@ class Squad:
             f"TSscore: {self.tsscore():.2f}"
         )
         bis = helpers.best_lineup(self.players)
-        yield tabulate(
+        yield helpers.tabulater(
             [
                 {"BIS": "X" if p in bis else ""} | p.display()
                 for p in sorted(
@@ -158,8 +154,6 @@ class Squad:
                     key=lambda x: (-helpers.position_order(x.position), -(x.xP or 0)),
                 )
             ],
-            tablefmt=conf.tabulate_format,
-            headers={},
         )
 
     def __str__(self) -> str:
