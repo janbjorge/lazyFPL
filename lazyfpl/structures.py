@@ -142,7 +142,7 @@ class Squad:
         bis = helpers.best_lineup(self.players)
         yield helpers.tabulater(
             [
-                p.display() | {"BIS": "X" if p in bis else ""}
+                dict({"BIS": "X" if p in bis else ""} | p.display())
                 for p in sorted(
                     self.players,
                     key=lambda x: (-helpers.position_order(x.position), -(x.xP or 0)),
