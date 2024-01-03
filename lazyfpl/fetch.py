@@ -103,7 +103,10 @@ def players() -> list[structures.Player]:
     pool = list[structures.Player]()
 
     for (name, webname), _games in itertools.groupby(
-        sorted(database.games(), key=lambda x: (x.player, x.webname)),
+        sorted(
+            database.games(),
+            key=lambda x: (x.player, x.webname),
+        ),
         lambda x: (x.player, x.webname),
     ):
         games = sorted(_games, key=lambda x: x.kickoff)
@@ -128,8 +131,8 @@ def players() -> list[structures.Player]:
         ]
 
         try:
-            # TODO: -1 looks odd.
-            next_upcoming = [g for g in games if g.upcoming][-1]
+            next_upcoming = [g for g in games if g.upcoming][0]
+            last_game = [g for g in games if not g.upcoming][-1]
         except IndexError as e:
             if conf.debug:
                 traceback.print_exception(e)
@@ -145,7 +148,7 @@ def players() -> list[structures.Player]:
                 team_short=next_upcoming.team_short,
                 webname=database.webname(games[-1].player_id),
                 xP=None,
-                selected=[g for g in games if not g.upcoming][-1].selected,
+                selected=last_game.selected,
             )
         )
 
