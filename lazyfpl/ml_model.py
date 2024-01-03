@@ -51,7 +51,7 @@ class Net(torch.nn.Module):
     def __init__(
         self,
         nfeature: int,
-        rnn_hidden: int = 4,
+        rnn_hidden: int = 8,
     ) -> None:
         super().__init__()
         self.nfeature = nfeature
@@ -62,6 +62,7 @@ class Net(torch.nn.Module):
             batch_first=True,
         )
         self.dec = torch.nn.Sequential(
+            torch.nn.Dropout(),
             torch.nn.Linear(
                 in_features=rnn_hidden,
                 out_features=1,
