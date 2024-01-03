@@ -27,6 +27,7 @@ class NormalizedFeatures:
     opponent: tuple[float, ...]
     points: float
     team_strength: float
+    farticipation_flag: float
 
     def flattend(self) -> tuple[float, ...]:
         def _flatter(obj):
@@ -94,6 +95,7 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
         opponent=onehot_team_name(f.opponent),
         points=p_scale.normalize(f.points),
         team_strength=(f.team_strength - 3) / 2,
+        farticipation_flag=(bool(f.minutes) - 0.5) / 0.5,
     )
 
 
@@ -223,6 +225,7 @@ def xP(
     inference = [features(f).flattend() for f in fixutres if not f.upcoming][
         -backtrace:
     ]
+    mtm = player.mtm()
     upcoming = [f for f in fixutres if f.upcoming]
     model = load_model(player)
     model.eval()
@@ -241,7 +244,10 @@ def xP(
             inference.append(
                 features(
                     structures.Fixture(
-                        **(dataclasses.asdict(nxt) | {"points": points[0]})
+                        **(
+                            dataclasses.asdict(nxt)
+                            | {"points": points[0], "minutes": mtm}
+                        )
                     )
                 ).flattend()
             )
