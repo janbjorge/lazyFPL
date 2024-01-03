@@ -168,7 +168,7 @@ def train(
 
     loss_function = torch.nn.HuberLoss()
     net = Net(ds[0][0].shape[-1])
-    optimizer = torch.optim.AdamW(net.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 
     for _ in range(epochs):
         for x, y in loader:
