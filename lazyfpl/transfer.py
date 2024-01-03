@@ -16,8 +16,14 @@ class Transfer(NamedTuple):
 def display(trans: Transfer) -> None:
     """Displays the changes between the old and new player sequences,
     including transfers in and out."""
-    sold = sorted((p for p in trans.sold.players), key=lambda x: x.position)
-    bought = sorted((p for p in trans.bought.players), key=lambda x: x.position)
+    sold = sorted(
+        (p for p in trans.sold.players),
+        key=lambda x: helpers.position_order(x.position),
+    )
+    bought = sorted(
+        (p for p in trans.bought.players),
+        key=lambda x: helpers.position_order(x.position),
+    )
 
     max_len_in_name = max(len(p.webname) for p in bought)
     max_len_in_team = max(len(p.team) for p in bought)

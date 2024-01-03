@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     players = sorted(
         fetch.players(),
-        key=lambda x: (x.position, x.xP or 0),
+        key=lambda x: (helpers.position_order(x.position), x.xP or 0),
         reverse=True,
     )
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
                 list(p)[: args.top]
                 for _, p in itertools.groupby(
                     players,
-                    key=lambda x: x.position,
+                    key=lambda x: helpers.position_order(x.position),
                 )
             ]
         )
