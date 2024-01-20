@@ -19,22 +19,21 @@ POSITIONS = T.Literal["GKP", "DEF", "MID", "FWD"]
 
 
 @dataclasses.dataclass(frozen=True)
-class SampleSummary:
+class Summary:
     mean: float
     std: float
     variance: float
 
     @staticmethod
-    def fromiter(values: T.Iterable[float]) -> SampleSummary:
+    def fromiter(values: T.Iterable[float]) -> Summary:
         """Creates a SampleSummary from an iterable of float values."""
-        return SampleSummary(
+        return Summary(
             mean=statistics.mean(values),
             std=statistics.stdev(values),
             variance=statistics.variance(values),
         )
 
-    def normalize(self, value: float) -> float:
-        """Normalizes a value based on the mean and variance of the sample."""
+    def unit_variance_normalization(self, value: float) -> float:
         return (value - self.mean) / self.variance
 
 
@@ -178,7 +177,7 @@ def load_model(player_id: int) -> bytes:
 
 
 @functools.cache
-def points() -> SampleSummary:
+def points() -> Summary:
     """SampleSummary of points scored in games."""
     p = [
         row["points"]
@@ -193,11 +192,11 @@ def points() -> SampleSummary:
     """
         )
     ]
-    return SampleSummary.fromiter(p)
+    return Summary.fromiter(p)
 
 
 @functools.cache
-def minutes() -> SampleSummary:
+def minutes() -> Summary:
     """SampleSummary of minutes played in games."""
     p = [
         row["minutes"]
@@ -212,4 +211,4 @@ def minutes() -> SampleSummary:
     """
         )
     ]
-    return SampleSummary.fromiter(p)
+    return Summary.fromiter(p)

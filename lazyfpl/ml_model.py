@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import dataclasses
 import functools
 import itertools
@@ -25,13 +26,12 @@ class NormalizedFeatures:
     at_home: float
     minutes: float
     opponent_strength: float
-    opponent: tuple[float, ...]
     points: float
     team_strength: float
-    participation_flag: float
+    opponent: tuple[float, ...]
 
     def flattend(self) -> tuple[float, ...]:
-        def _flatter(obj):
+        def _flatter(obj: object) -> typing.Generator[float | int | bool, None, None]:
             if isinstance(obj, (float, int, bool)):
                 yield obj
             elif isinstance(obj, (tuple, list, set)):
@@ -87,16 +87,15 @@ def onehot_team_name(name: str) -> tuple[float, ...]:
 def features(f: structures.Fixture) -> NormalizedFeatures:
     """Generates and returns normalized features for a given fixture."""
     assert f.points is not None
-    p_scale = database.points()
-    m_scale = database.minutes()
+    points_scale = database.points()
+    minutes_scale = database.minutes()
     return NormalizedFeatures(
         at_home=(f.at_home - 0.5) / 0.5,
-        minutes=m_scale.normalize(f.minutes or 0),
+        minutes=minutes_scale.unit_variance_normalization(f.minutes or 0),
         opponent_strength=(f.opponent_strength - 3) / 2,
         opponent=onehot_team_name(f.opponent),
-        points=p_scale.normalize(f.points),
+        points=points_scale.unit_variance_normalization(f.points),
         team_strength=(f.team_strength - 3) / 2,
-        participation_flag=(bool(f.minutes) - 0.5) / 0.5,
     )
 
 
@@ -155,7 +154,7 @@ def train(
     lr: float,
     upsample: int,
     batch_size: int,
-):
+) -> Net:
     """Trains a model for the given player using the specified parameters."""
     bundles = tuple(samples(player.fixutres, upsample, conf.backtrace))
     features = [[f.flattend() for f in b.features] for b in bundles]
@@ -248,8 +247,10 @@ def xP(
                 features(
                     structures.Fixture(
                         **(
-                            dataclasses.asdict(nxt)
-                            | {"points": points[0], "minutes": mtm}
+                            collections.ChainMap(
+                                {"points": points[0], "minutes": mtm},
+                                dataclasses.asdict(nxt),
+                            )
                         )
                     )
                 ).flattend()
@@ -261,7 +262,7 @@ def xP(
     return round(sum(expected), 1)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="Player model trainer.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

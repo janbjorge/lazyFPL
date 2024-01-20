@@ -61,7 +61,10 @@ lineup = [player1, player2, player3, player4]
         ([], 0),
     ],
 )
-def test_squad_price(lineup: list[structures.Player], expected_price: int):
+def test_squad_price(
+    lineup: list[structures.Player],
+    expected_price: int,
+) -> None:
     assert helpers.squad_price(lineup) == expected_price
 
 
@@ -72,7 +75,10 @@ def test_squad_price(lineup: list[structures.Player], expected_price: int):
         ([], 0.0),
     ],
 )
-def test_squad_xP(lineup: list[structures.Player], expected_xp: float):
+def test_squad_xP(
+    lineup: list[structures.Player],
+    expected_xp: float,
+) -> None:
     assert helpers.squad_xP(lineup) == expected_xp
 
 
@@ -83,5 +89,8 @@ def test_squad_xP(lineup: list[structures.Player], expected_xp: float):
         ([], 0.0),
     ],
 )
-def test_overall_xP(lineup: list[structures.Player], expected_overall_xp: float):
+def test_overall_xP(
+    lineup: list[structures.Player],
+    expected_overall_xp: float,
+) -> None:
     assert pytest.approx(helpers.overall_xP(lineup)) == expected_overall_xp

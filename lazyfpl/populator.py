@@ -382,7 +382,7 @@ def upcoming_position(name: str) -> database.POSITIONS:
     raise ValueError(f"No player named: {name}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="Populator",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

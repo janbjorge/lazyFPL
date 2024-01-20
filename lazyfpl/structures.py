@@ -126,7 +126,7 @@ class Squad:
     def tsscore(self, n: int = conf.lookahead) -> float:
         return helpers.tsscore(self.players)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Player, None, None]:
         yield from self.players
 
     def __len__(self) -> int:

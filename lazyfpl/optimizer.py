@@ -196,7 +196,7 @@ def lineups_xp(
     ]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="Lineup optimizer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

@@ -1,4 +1,4 @@
-def help_message():
+def help_message() -> None:
     print(
         """
     LazyFPL - Fantasy Premier League Team Optimizer - Win at FPL with Laziness
