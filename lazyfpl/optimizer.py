@@ -168,35 +168,27 @@ def lineups_xp(
                                 <= (price := mp + dp + fp + gp)
                                 <= budget_upper
                                 and constraints.team_constraint(
-                                    squad := g + f + d + m, n=max_players_per_team
+                                    squad := g + f + d + m,
+                                    n=max_players_per_team,
                                 )
                                 and (oxp := helpers.overall_xP(squad)) > best_squad_xp
                                 and not any(squad == s for _, s in best_squads)
                             ):
-                                if len(best_squads) >= n_squads:
-                                    heapq.heappushpop(
-                                        best_squads,
+                                (
+                                    heapq.heappushpop
+                                    if len(best_squads) >= n_squads
+                                    else heapq.heappush
+                                )(
+                                    best_squads,
+                                    (
                                         (
-                                            (
-                                                round(oxp, 1),
-                                                price,
-                                                sequence := sequence + 1,
-                                            ),
-                                            squad,
+                                            round(oxp, 1),
+                                            price,
+                                            sequence := sequence + 1,
                                         ),
-                                    )
-                                else:
-                                    heapq.heappush(
-                                        best_squads,
-                                        (
-                                            (
-                                                round(oxp, 1),
-                                                price,
-                                                sequence := sequence + 1,
-                                            ),
-                                            squad,
-                                        ),
-                                    )
+                                        squad,
+                                    ),
+                                )
 
     return [
         structures.Squad(heapq.heappop(best_squads)[-1])
