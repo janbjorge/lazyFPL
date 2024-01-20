@@ -34,8 +34,7 @@ def backeval(
     given number of past fixtures.
     """
     with torch.no_grad():
-        net = ml_model.load_model(player)
-        net.eval()
+        net = ml_model.load_model(player).eval()
         fixutres = [f for f in player.fixutres if not f.upcoming][-backstep:]
         for *context, target in more_itertools.sliding_window(fixutres, backtrace + 1):
             xP = (

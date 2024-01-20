@@ -228,8 +228,7 @@ def xP(
     ]
     mtm = player.mtm()
     upcoming = [f for f in fixutres if f.upcoming]
-    model = load_model(player)
-    model.eval()
+    model = load_model(player).eval()
     with torch.no_grad():
         for nxt in upcoming[:lookahead]:
             points = (
