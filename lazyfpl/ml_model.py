@@ -10,6 +10,7 @@ import traceback
 import typing
 
 import torch
+import more_itertools
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 from tqdm.std import tqdm
 
@@ -117,18 +118,19 @@ def samples(
 ) -> typing.Iterator[FeatureBundle]:
     """Generates training samples from a list of fixtures, considering
     upsampling and backtrace length."""
+    fixtures = [f for f in fixtures if not f.upcoming]
     fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
     # time --->
-    train = [f for f in fixtures if not f.upcoming]
-    min_ko = min(f.kickoff_time for f in train)
-    max_ko = max(f.kickoff_time for f in train)
+    min_ko = min(f.kickoff_time for f in fixtures)
+    max_ko = max(f.kickoff_time for f in fixtures)
 
-    if len(train) < backtrace:
+    if len(fixtures) < backtrace:
         raise ValueError("To few samples.")
 
-    while len(train) > backtrace:
-        target = train.pop(-1)
-        assert target.points is not None
+    for window in more_itertools.sliding_window(fixtures, backtrace + 1):
+        # Split window into context and target, context beeing the players previues
+        # performences being used to predict the outcome of the upcoming match.
+        *ctx, target = window
         repat = max(
             (
                 math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
@@ -137,9 +139,10 @@ def samples(
             ),
             1,
         )
+        assert target.points is not None
         yield from itertools.repeat(
             FeatureBundle(
-                features=tuple(features(f) for f in train[-backtrace:]),
+                features=tuple(features(c) for c in ctx),
                 target=target.points,
             ),
             round(repat),
