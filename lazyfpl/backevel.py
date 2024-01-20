@@ -6,6 +6,7 @@ import statistics
 import traceback
 import typing
 
+import more_itertools
 import torch
 
 from lazyfpl import conf, fetch, ml_model, structures
@@ -19,13 +20,12 @@ class PredictionOutcome:
     """
 
     prediceted: float
-    truth: float
+    target: float
     kickoff: datetime.datetime
 
 
 def backeval(
     player: structures.Player,
-    lookahead: int = 1,
     backtrace: int = conf.backtrace,
     backstep: int = 10,
 ) -> typing.Iterator[PredictionOutcome]:
@@ -36,24 +36,25 @@ def backeval(
     with torch.no_grad():
         net = ml_model.load_model(player)
         net.eval()
-        for n in range(backstep):
-            fixutres = [f for f in player.fixutres if not f.upcoming][
-                -(backtrace + lookahead + n) : -(lookahead + n)
-            ]
-            inference = [(ml_model.features(f)).flattend() for f in fixutres]
-            try:
-                next_fixture = player.fixutres[player.fixutres.index(fixutres[-1]) + 1]
-            except IndexError:
-                break
-
-            xP = net(torch.tensor(inference, dtype=torch.float32)).detach().numpy()[0]
+        fixutres = [f for f in player.fixutres if not f.upcoming][-backstep:]
+        for *context, target in more_itertools.sliding_window(fixutres, backtrace + 1):
+            xP = (
+                net(
+                    torch.tensor(
+                        [(ml_model.features(c)).flattend() for c in context],
+                        dtype=torch.float32,
+                    )
+                )
+                .detach()
+                .numpy()[0]
+            )
 
             assert xP is not None
-            assert next_fixture.points is not None
+            assert target.points is not None
             yield PredictionOutcome(
                 prediceted=xP,
-                truth=next_fixture.points,
-                kickoff=next_fixture.kickoff_time,
+                target=target.points,
+                kickoff=target.kickoff_time,
             )
 
 
@@ -80,13 +81,13 @@ if __name__ == "__main__":
         for e in sorted(ev, key=lambda x: x.kickoff):
             print(
                 f"  When: {e.kickoff.date()} xP: {e.prediceted:<6.1f} "
-                f"TP: {e.truth:<6.1f} Err: {abs(e.prediceted - e.truth):<6.1f}"
+                f"TP: {e.target:<6.1f} Err: {abs(e.prediceted - e.target):<6.1f}"
             )
 
     print()
     rms = (
         statistics.mean(
-            (v.prediceted - v.truth) ** 2
+            (v.prediceted - v.target) ** 2
             for values in player_xp.values()
             for v in values
         )
@@ -94,12 +95,12 @@ if __name__ == "__main__":
     )
     print(f"RMS: {rms:.1f}")
     am = statistics.mean(
-        (abs(v.prediceted - v.truth)) for values in player_xp.values() for v in values
+        (abs(v.prediceted - v.target)) for values in player_xp.values() for v in values
     )
     print(f"AM : {am:.1f}")
     for n in range(1, 6):
         errs = (
-            1 if abs(v.prediceted - v.truth) <= n else 0
+            1 if abs(v.prediceted - v.target) <= n else 0
             for values in player_xp.values()
             for v in values
         )
@@ -108,7 +109,9 @@ if __name__ == "__main__":
     print()
 
     def key(values: tuple[PredictionOutcome, ...]) -> float:
-        return statistics.mean((v.prediceted - v.truth) ** 2 for v in values) ** 0.5 + 1
+        return (
+            statistics.mean((v.prediceted - v.target) ** 2 for v in values) ** 0.5 + 1
+        )
 
     for player, values in sorted(
         player_xp.items(),

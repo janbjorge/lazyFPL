@@ -126,10 +126,9 @@ def samples(
     if len(fixtures) < backtrace:
         raise ValueError("To few samples.")
 
-    for window in more_itertools.sliding_window(fixtures, backtrace + 1):
+    for *context, target in more_itertools.sliding_window(fixtures, backtrace + 1):
         # Split window into context and target, context beeing the players previues
         # performences being used to predict the outcome of the upcoming match.
-        *ctx, target = window
         repat = max(
             (
                 math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
@@ -141,7 +140,7 @@ def samples(
         assert target.points is not None
         yield from itertools.repeat(
             FeatureBundle(
-                features=tuple(features(c) for c in ctx),
+                features=tuple(features(c) for c in context),
                 target=target.points,
             ),
             round(repat),
