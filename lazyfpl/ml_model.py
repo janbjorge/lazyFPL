@@ -9,8 +9,8 @@ import pickle
 import traceback
 import typing
 
-import torch
 import more_itertools
+import torch
 from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 from tqdm.std import tqdm
 
@@ -28,7 +28,7 @@ class NormalizedFeatures:
     opponent: tuple[float, ...]
     points: float
     team_strength: float
-    farticipation_flag: float
+    participation_flag: float
 
     def flattend(self) -> tuple[float, ...]:
         def _flatter(obj):
@@ -96,7 +96,7 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
         opponent=onehot_team_name(f.opponent),
         points=p_scale.normalize(f.points),
         team_strength=(f.team_strength - 3) / 2,
-        farticipation_flag=(bool(f.minutes) - 0.5) / 0.5,
+        participation_flag=(bool(f.minutes) - 0.5) / 0.5,
     )
 
 
