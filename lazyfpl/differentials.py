@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from itertools import chain, groupby
 
 from lazyfpl import fetch, helpers
 
@@ -42,10 +43,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    players = sorted(
+    pool = fetch.players()
+
+    if args.no_news:
+        pool = [p for p in pool if not p.news]
+
+    pool = sorted(
         [
             p
-            for p in fetch.players()
+            for p in pool
             if p.selected > args.min_selected
             and (p.xP or 0) > args.min_xp
             and p.mtm() > args.min_mtm
@@ -56,11 +62,27 @@ if __name__ == "__main__":
         ),
     )
 
-    if args.no_news:
-        players = [p for p in players if not p.news]
+    pool = list(
+        chain.from_iterable(
+            list(x)[: args.top]
+            for _, x in groupby(
+                pool,
+                key=lambda x: helpers.position_order(x.position),
+            )
+        )
+    )
 
     print(
         helpers.tabulater(
-            [p.display() for p in players],
+            [
+                p.display()
+                for p in sorted(
+                    pool,
+                    key=lambda x: (
+                        -helpers.position_order(x.position),
+                        -(x.xP or 0),
+                    ),
+                )
+            ],
         ),
     )
