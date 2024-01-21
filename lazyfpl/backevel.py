@@ -57,25 +57,29 @@ def backeval(
             )
 
 
-def players_backeval() -> dict[structures.Player, tuple[PredictionOutcome, ...]]:
+def players_backeval() -> (
+    typing.Generator[
+        tuple[structures.Player, tuple[PredictionOutcome, ...]],
+        None,
+        None,
+    ]
+):
     """
     Evaluates the back-evaluation for all players and returns
     a dictionary with the results.
     """
-    rv = dict[structures.Player, tuple[PredictionOutcome, ...]]()
     for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
         try:
-            rv[player] = tuple(backeval(player))
+            yield player, tuple(backeval(player))
         except ValueError as e:
             if conf.debug:
                 traceback.print_exception(e)
-    return rv
 
 
 if __name__ == "__main__":
-    player_xp = players_backeval()
+    player_xp = tuple(players_backeval())
 
-    for player, ev in player_xp.items():
+    for player, ev in player_xp:
         print(f"\n{player.name}({player.webname}) - {player.position} - {player.team}")
         for e in sorted(ev, key=lambda x: x.kickoff):
             print(
@@ -86,21 +90,19 @@ if __name__ == "__main__":
     print()
     rms = (
         statistics.mean(
-            (v.prediceted - v.target) ** 2
-            for values in player_xp.values()
-            for v in values
+            (v.prediceted - v.target) ** 2 for _, values in player_xp for v in values
         )
         ** 0.5
     )
     print(f"RMS: {rms:.1f}")
     am = statistics.mean(
-        (abs(v.prediceted - v.target)) for values in player_xp.values() for v in values
+        (abs(v.prediceted - v.target)) for _, values in player_xp for v in values
     )
     print(f"AM : {am:.1f}")
     for n in range(1, 6):
         errs = (
             1 if abs(v.prediceted - v.target) <= n else 0
-            for values in player_xp.values()
+            for _, values in player_xp
             for v in values
         )
         print(f"RC{n}: {statistics.mean(errs)*100:.1f}")
@@ -113,7 +115,7 @@ if __name__ == "__main__":
         )
 
     for player, values in sorted(
-        player_xp.items(),
+        player_xp,
         key=lambda x: (x[0].xP or 0) / (key(x[1])),
     )[-10:]:
         if player.xP:
