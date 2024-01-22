@@ -123,12 +123,13 @@ def samples(
     min_ko = min(f.kickoff_time for f in fixtures)
     max_ko = max(f.kickoff_time for f in fixtures)
 
-    if len(fixtures) < backtrace:
+    if len(fixtures) < backtrace + 1:
         raise ValueError("To few samples.")
 
     for *context, target in more_itertools.sliding_window(fixtures, backtrace + 1):
         # Split window into context and target, context beeing the players previues
         # performences being used to predict the outcome of the upcoming match.
+        assert len(context) == backtrace
         repat = max(
             (
                 math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
