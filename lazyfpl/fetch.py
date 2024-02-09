@@ -163,7 +163,7 @@ def players() -> list[structures.Player]:
 
 
 @functools.cache
-def picks() -> list[dict]:
+def picks() -> list[Persona]:
     """
     Fetches and returns the current team picks from the Fantasy Premier League API.
     """
@@ -180,12 +180,26 @@ def picks() -> list[dict]:
     if not response:
         raise RuntimeError("Non 2xx status code.")
 
-    return response.json()["picks"]
+    return [person(p["element"]) for p in response.json()["picks"]]
 
 
 def my_team() -> structures.Squad:
     """
     Constructs and returns a Squad object representing the user's current team.
     """
-    webnames = {person(pick["element"]).webname for pick in picks()}
-    return structures.Squad([p for p in players() if p.webname in webnames])
+
+    def fuzzyed_equal(player: structures.Player, persona: Persona) -> bool:
+        personawebname = persona.webname.casefold()
+        playerwebname = player.webname.casefold()
+
+        personaname = persona.combined.casefold()
+        playername = player.name.casefold()
+        return (
+            personawebname == playerwebname
+            and all(name in personaname for name in playername.split())
+            and all(name in playername for name in personaname.split())
+        )
+
+    return structures.Squad(
+        [p for p in players() if any(fuzzyed_equal(p, pck) for pck in picks())]
+    )
