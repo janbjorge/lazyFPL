@@ -102,9 +102,6 @@ def transfer(
     min_bought_price = {
         n: min(c.price for c in combinations) for n, combinations in bought.items()
     }
-    min_bought_xp = {
-        n: min(c.xP for c in combinations) for n, combinations in bought.items()
-    }
 
     for n, combinations in sold.items():
         print(f"Sell combinations:   {n} - {len(combinations)}")
@@ -117,9 +114,6 @@ def transfer(
 
     for nin, bought_combinations in bought.items():
         for sold_combination in sold[nin]:
-            if sold_combination.xP > min_bought_xp[nin]:
-                continue
-
             if (
                 current_squad_price - sold_combination.price + min_bought_price[nin]
                 > max_budget
