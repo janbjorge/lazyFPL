@@ -62,7 +62,6 @@ class Net(torch.nn.Module):
             torch.nn.Linear(nfeature * backtrace, nfeature // scale_down),
             torch.nn.BatchNorm1d(num_features=nfeature // scale_down),
             torch.nn.ELU(),
-            torch.nn.Dropout(),
             torch.nn.Linear(nfeature // scale_down, 1),
             torch.nn.ELU(),
         )
