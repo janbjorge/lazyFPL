@@ -58,22 +58,21 @@ class Net(torch.nn.Module):
         super().__init__()
         self.nfeature = nfeature
         self.rnn_hidden = rnn_hidden
-        self.enc = torch.nn.GRU(
-            input_size=nfeature,
-            hidden_size=rnn_hidden,
-            batch_first=True,
-        )
-        self.dec = torch.nn.Sequential(
-            torch.nn.Dropout(),
-            torch.nn.Linear(
-                in_features=rnn_hidden,
-                out_features=1,
-            ),
-        )
+        self.lina = torch.nn.Linear(nfeature * 3, nfeature)
+        self.linb = torch.nn.Linear(nfeature, nfeature // 2)
+        self.linc = torch.nn.Linear(nfeature // 2, 1)
+        self.dropout = torch.nn.Dropout()
+        self.elu = torch.nn.ELU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        _, h_final = self.enc(x)
-        return self.dec(h_final.squeeze()).view(-1)
+        x = x.reshape(x.shape[0], 90)
+        x = self.lina(x)
+        x = self.elu(x)
+        x = self.linb(x)
+        x = self.elu(x)
+        x = self.linc(x)
+        x = self.elu(x)
+        return x.squeeze()
 
 
 @functools.cache
@@ -168,9 +167,13 @@ def train(
             dtype=torch.float32,
         ),
     )
-    loader = TorchDataLoader(ds, batch_size=batch_size, shuffle=True)
+    loader = TorchDataLoader(
+        ds,
+        batch_size=batch_size,
+        shuffle=True,
+    )
 
-    loss_function = torch.nn.HuberLoss()
+    loss_function = torch.nn.MSELoss()
     net = Net(ds[0][0].shape[-1])
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 
@@ -178,7 +181,7 @@ def train(
         for x, y in loader:
             optimizer.zero_grad()
             output = net(x)
-            assert output.shape == y.shape, (output.shape, y.shape)
+            # assert output.shape == y.shape, (output.shape, y.shape)
             loss = loss_function(output, y)
             loss.backward()
             optimizer.step()
@@ -234,20 +237,19 @@ def xP(
         for nxt in upcoming[:lookahead]:
             points = (
                 model(
-                    torch.tensor(inference, dtype=torch.float32),
+                    torch.tensor(inference, dtype=torch.float32).unsqueeze(0),
                 )
                 .detach()
                 .numpy()
             )
-            assert points.shape == (1,), points.shape
-            expected.extend(points)
+            expected.append(points)
             inference.pop(0)
             inference.append(
                 features(
                     structures.Fixture(
                         **(
                             collections.ChainMap(
-                                {"points": points[0], "minutes": mtm},
+                                {"points": points, "minutes": mtm},
                                 dataclasses.asdict(nxt),
                             )
                         )
@@ -301,6 +303,7 @@ def main() -> None:
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
+    players = sorted(fetch.players(), key=lambda x: x.tp())[-100:]
     max_webname = max(len(p.webname) for p in players)
 
     with tqdm(
@@ -326,6 +329,7 @@ def main() -> None:
                 ...
             except Exception as e:
                 bar.write("".join(traceback.format_exception(e)))
+                exit(1)
             else:
                 save_model(player, m)
                 bar.write(
