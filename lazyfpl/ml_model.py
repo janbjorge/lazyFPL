@@ -286,7 +286,7 @@ def main() -> None:
     parser.add_argument(
         "--upsample",
         type=int,
-        default=32,
+        default=16,
         help="(default: %(default)s)",
     )
     parser.add_argument(
