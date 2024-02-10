@@ -103,29 +103,22 @@ if __name__ == "__main__":
     )
     print(f"RMS: {rms:.1f}")
     for n in range(1, 6):
-        errs = (
+        rc = statistics.mean(
             1 if abs(v.prediceted - v.target) <= n else 0
             for _, values in player_xp
             for v in values
         )
-        print(f"RC{n}: {statistics.mean(errs)*100:.1f}")
+        print(f"RC{n}: {rc*100:.1f}")
 
     print()
 
-    def key(values: tuple[PredictionOutcome, ...]) -> float:
-        return (
-            statistics.mean((v.prediceted - v.target) ** 2 for v in values) ** 0.5 + 1
-        )
-
-    for player, values in sorted(
-        player_xp,
-        key=lambda x: (x[0].xP or 0) / (key(x[1])),
-    )[-10:]:
-        if player.xP:
-            print(
-                f"{player.webname:<20} {player.xP:<6.2f} "
-                f"{key(values):<6.2f} {(player.xP or 0)/(key(values)):<6.2f}"
-            )
-
-    print()
     print(f"Num selected for backeval: {len(player_xp)}")
+    import matplotlib.pyplot as plt
+
+    plt.hist(
+        [(v.prediceted - v.target) for _, values in player_xp for v in values],
+        bins=51,
+        range=(-5, 5),
+    )
+    plt.grid(True)
+    plt.show()
