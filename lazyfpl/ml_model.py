@@ -54,7 +54,7 @@ class Net(torch.nn.Module):
         self,
         nfeature: int,
         backtrace: int = conf.backtrace,
-        scale_down: int = 4,
+        scale_down: int = 8,
     ) -> None:
         super().__init__()
         self.nfeature = nfeature
@@ -166,7 +166,6 @@ def train(
         ds,
         batch_size=batch_size,
         shuffle=True,
-        drop_last=True,
     )
 
     loss_function = torch.nn.MSELoss()

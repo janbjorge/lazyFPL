@@ -42,7 +42,6 @@ def display(trans: Transfer) -> None:
             f"{b.team:<{max_len_in_team}} {b.xP or 0.0:.1f}"
         )
     print(f"xP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
-    # log.write(f"TS  gain: {(helpers.tsscore(bought) - helpers.tsscore(sold)):.1f}")
 
 
 def transfer(
