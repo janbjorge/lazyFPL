@@ -53,26 +53,21 @@ class Net(torch.nn.Module):
     def __init__(
         self,
         nfeature: int,
-        rnn_hidden: int = 8,
+        backtrace: int = conf.backtrace,
+        scale_down: int = 4,
     ) -> None:
         super().__init__()
         self.nfeature = nfeature
-        self.rnn_hidden = rnn_hidden
-        self.lina = torch.nn.Linear(nfeature * 3, nfeature)
-        self.linb = torch.nn.Linear(nfeature, nfeature // 2)
-        self.linc = torch.nn.Linear(nfeature // 2, 1)
-        self.dropout = torch.nn.Dropout()
-        self.elu = torch.nn.ELU()
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(nfeature * backtrace, nfeature // scale_down),
+            torch.nn.BatchNorm1d(num_features=nfeature // scale_down),
+            torch.nn.ELU(),
+            torch.nn.Linear(nfeature // scale_down, 1),
+            torch.nn.ELU(),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x.reshape(x.shape[0], 90)
-        x = self.lina(x)
-        x = self.elu(x)
-        x = self.linb(x)
-        x = self.elu(x)
-        x = self.linc(x)
-        x = self.elu(x)
-        return x.squeeze()
+        return self.net(x.reshape(x.shape[0], -1)).squeeze()
 
 
 @functools.cache
@@ -171,17 +166,19 @@ def train(
         ds,
         batch_size=batch_size,
         shuffle=True,
+        drop_last=True,
     )
 
     loss_function = torch.nn.MSELoss()
     net = Net(ds[0][0].shape[-1])
+
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 
     for _ in range(epochs):
         for x, y in loader:
             optimizer.zero_grad()
             output = net(x)
-            # assert output.shape == y.shape, (output.shape, y.shape)
+            assert output.shape == y.shape, (output.shape, y.shape)
             loss = loss_function(output, y)
             loss.backward()
             optimizer.step()
@@ -195,7 +192,7 @@ def load_model(player: structures.Player) -> Net:
         raise KeyError(player.name)
     if bts := database.load_model(pid):
         ms = pickle.loads(bts)
-        n = Net(nfeature=ms["nfeature"], rnn_hidden=ms["rnn_hidden"])
+        n = Net(nfeature=ms["nfeature"])
         n.load_state_dict(ms["weights"])
         return n
     raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
@@ -210,7 +207,6 @@ def save_model(player: structures.Player, m: Net) -> None:
         pid,
         pickle.dumps(
             {
-                "rnn_hidden": m.rnn_hidden,
                 "nfeature": m.nfeature,
                 "weights": m.state_dict(),
             }
@@ -329,7 +325,6 @@ def main() -> None:
                 ...
             except Exception as e:
                 bar.write("".join(traceback.format_exception(e)))
-                exit(1)
             else:
                 save_model(player, m)
                 bar.write(
