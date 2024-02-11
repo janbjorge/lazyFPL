@@ -305,8 +305,9 @@ def main() -> None:
             except (
                 IndexError,
                 ValueError,
-            ):
-                ...
+            ) as e:
+                if conf.debug:
+                    bar.write("".join(traceback.format_exception(e)))
             except Exception as e:
                 bar.write("".join(traceback.format_exception(e)))
             else:
