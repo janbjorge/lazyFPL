@@ -12,7 +12,7 @@ import requests
 from lazyfpl import conf, database, ml_model, structures
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Persona:
     """
     Represents a Persona with first name, second name, and webname.

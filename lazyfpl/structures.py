@@ -10,7 +10,7 @@ import pydantic
 from lazyfpl import conf, database, helpers
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Fixture:
     at_home: bool
     kickoff_time: datetime.datetime

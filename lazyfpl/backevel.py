@@ -12,7 +12,7 @@ import torch
 from lazyfpl import conf, fetch, helpers, ml_model, structures
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class PredictionOutcome:
     """
     Represents the outcome of a prediction, including predicted and

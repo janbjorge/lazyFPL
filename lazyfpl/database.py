@@ -18,7 +18,7 @@ CURRENT_SESSION = T.get_args(SESSIONS)[-1]
 POSITIONS = T.Literal["GKP", "DEF", "MID", "FWD"]
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Summary:
     mean: float
     std: float
