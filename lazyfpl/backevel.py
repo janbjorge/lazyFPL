@@ -113,12 +113,3 @@ if __name__ == "__main__":
     print()
 
     print(f"Num selected for backeval: {len(player_xp)}")
-    import matplotlib.pyplot as plt
-
-    plt.hist(
-        [(v.prediceted - v.target) for _, values in player_xp for v in values],
-        bins=51,
-        range=(-5, 5),
-    )
-    plt.grid(True)
-    plt.show()

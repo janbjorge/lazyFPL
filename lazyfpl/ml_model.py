@@ -298,7 +298,6 @@ def main() -> None:
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
-    players = sorted(fetch.players(), key=lambda x: x.tp())[-100:]
     max_webname = max(len(p.webname) for p in players)
 
     with tqdm(
