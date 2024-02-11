@@ -163,6 +163,7 @@ def train(
         ds,
         batch_size=batch_size,
         shuffle=True,
+        drop_last=True,
     )
 
     loss_function = torch.nn.MSELoss()
