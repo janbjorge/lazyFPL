@@ -63,7 +63,6 @@ class Net(torch.nn.Module):
             torch.nn.BatchNorm1d(num_features=nfeature // scale_down),
             torch.nn.ELU(),
             torch.nn.Linear(nfeature // scale_down, 1),
-            torch.nn.ELU(),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -71,10 +70,11 @@ class Net(torch.nn.Module):
 
 
 @functools.cache
-def onehot_team_name(name: str) -> tuple[float, ...]:
-    names = sorted({g.team for g in database.games()})
-    enc = [0.0] * len(names)
-    enc[names.index(name)] = 1.0
+def onehot_team_name(team_name: str) -> tuple[float, ...]:
+    teams = sorted({g.team for g in database.games()})
+    enc = [0.0] * len(teams)
+    enc[teams.index(team_name)] = 1.0
+    assert math.isclose(sum(enc), 1.0)
     return tuple(enc)
 
 
