@@ -36,13 +36,12 @@ def display(trans: Transfer) -> None:
     for s, b in zip(sold, bought):
         print(
             f"{s.position}: {s.webname:<{max_len_out_name}} "
-            f"- {s.team:<{max_len_out_team}} {s.xP:<5.1f}"
+            f"- {s.team:<{max_len_out_team}} {s.xP or 0.0:<5.1f}"
             "  -->>  "
             f"{b.webname:<{max_len_in_name}} - "
-            f"{b.team:<{max_len_in_team}} {b.xP:.1f}"
+            f"{b.team:<{max_len_in_team}} {b.xP or 0.0:.1f}"
         )
     print(f"xP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
-    # log.write(f"TS  gain: {(helpers.tsscore(bought) - helpers.tsscore(sold)):.1f}")
 
 
 def transfer(
@@ -75,10 +74,6 @@ def transfer(
             sold[n] = tuple(
                 c for c in combinations if all(r in c.players for r in remove)
             )
-
-    min_bought_xp = {
-        n: min(c.xP for c in combinations) for n, combinations in sold.items()
-    }
 
     pool = [p for p in pool if p not in current]
     bought = {
@@ -245,7 +240,7 @@ def main() -> None:
             max_transfers=args.max_transfers,
         ),
         key=lambda x: x.bought.xP - x.sold.xP,
-    )
+    )[-100:]
 
     for trans in transfers:
         display(trans)

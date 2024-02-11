@@ -9,7 +9,7 @@ import typing
 import more_itertools
 import torch
 
-from lazyfpl import conf, fetch, ml_model, structures
+from lazyfpl import conf, fetch, helpers, ml_model, structures
 
 
 @dataclasses.dataclass(frozen=True)
@@ -42,10 +42,10 @@ def backeval(
                     torch.tensor(
                         [(ml_model.features(c)).flattend() for c in context],
                         dtype=torch.float32,
-                    )
+                    ).unsqueeze(0)
                 )
                 .detach()
-                .numpy()[0]
+                .numpy()
             )
 
             assert xP is not None
@@ -57,18 +57,25 @@ def backeval(
             )
 
 
-def players_backeval() -> (
-    typing.Generator[
-        tuple[structures.Player, tuple[PredictionOutcome, ...]],
-        None,
-        None,
-    ]
-):
+def players_backeval(
+    top_n_total_points: int = 100,
+) -> typing.Generator[
+    tuple[structures.Player, tuple[PredictionOutcome, ...]],
+    None,
+    None,
+]:
     """
     Evaluates the back-evaluation for all players and returns
     a dictionary with the results.
     """
-    for player in sorted(fetch.players(), key=lambda x: (x.team, x.webname, x.name)):
+    for player in sorted(
+        sorted(fetch.players(), key=lambda x: x.tp())[-top_n_total_points:],
+        key=lambda x: (
+            x.team,
+            helpers.position_order(x.position),
+            x.name,
+        ),
+    ):
         try:
             yield player, tuple(backeval(player))
         except ValueError as e:
@@ -95,31 +102,23 @@ if __name__ == "__main__":
         ** 0.5
     )
     print(f"RMS: {rms:.1f}")
-    am = statistics.mean(
-        (abs(v.prediceted - v.target)) for _, values in player_xp for v in values
-    )
-    print(f"AM : {am:.1f}")
     for n in range(1, 6):
-        errs = (
+        rc = statistics.mean(
             1 if abs(v.prediceted - v.target) <= n else 0
             for _, values in player_xp
             for v in values
         )
-        print(f"RC{n}: {statistics.mean(errs)*100:.1f}")
+        print(f"RC{n}: {rc*100:.1f}")
 
     print()
 
-    def key(values: tuple[PredictionOutcome, ...]) -> float:
-        return (
-            statistics.mean((v.prediceted - v.target) ** 2 for v in values) ** 0.5 + 1
-        )
+    print(f"Num selected for backeval: {len(player_xp)}")
+    import matplotlib.pyplot as plt
 
-    for player, values in sorted(
-        player_xp,
-        key=lambda x: (x[0].xP or 0) / (key(x[1])),
-    )[-10:]:
-        if player.xP:
-            print(
-                f"{player.webname:<20} {player.xP:<6.2f} "
-                f"{key(values):<6.2f} {(player.xP or 0)/(key(values)):<6.2f}"
-            )
+    plt.hist(
+        [(v.prediceted - v.target) for _, values in player_xp for v in values],
+        bins=51,
+        range=(-5, 5),
+    )
+    plt.grid(True)
+    plt.show()

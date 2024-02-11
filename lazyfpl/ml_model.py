@@ -53,34 +53,28 @@ class Net(torch.nn.Module):
     def __init__(
         self,
         nfeature: int,
-        rnn_hidden: int = 8,
+        backtrace: int = conf.backtrace,
+        scale_down: int = 8,
     ) -> None:
         super().__init__()
         self.nfeature = nfeature
-        self.rnn_hidden = rnn_hidden
-        self.enc = torch.nn.GRU(
-            input_size=nfeature,
-            hidden_size=rnn_hidden,
-            batch_first=True,
-        )
-        self.dec = torch.nn.Sequential(
-            torch.nn.Dropout(),
-            torch.nn.Linear(
-                in_features=rnn_hidden,
-                out_features=1,
-            ),
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(nfeature * backtrace, nfeature // scale_down),
+            torch.nn.BatchNorm1d(num_features=nfeature // scale_down),
+            torch.nn.ELU(),
+            torch.nn.Linear(nfeature // scale_down, 1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        _, h_final = self.enc(x)
-        return self.dec(h_final.squeeze()).view(-1)
+        return self.net(x.reshape(x.shape[0], -1)).squeeze()
 
 
 @functools.cache
-def onehot_team_name(name: str) -> tuple[float, ...]:
-    names = sorted({g.team for g in database.games()})
-    enc = [0.0] * len(names)
-    enc[names.index(name)] = 1.0
+def onehot_team_name(team_name: str) -> tuple[float, ...]:
+    teams = sorted({g.team for g in database.games()})
+    enc = [0.0] * len(teams)
+    enc[teams.index(team_name)] = 1.0
+    assert math.isclose(sum(enc), 1.0)
     return tuple(enc)
 
 
@@ -168,10 +162,15 @@ def train(
             dtype=torch.float32,
         ),
     )
-    loader = TorchDataLoader(ds, batch_size=batch_size, shuffle=True)
+    loader = TorchDataLoader(
+        ds,
+        batch_size=batch_size,
+        shuffle=True,
+    )
 
-    loss_function = torch.nn.HuberLoss()
+    loss_function = torch.nn.MSELoss()
     net = Net(ds[0][0].shape[-1])
+
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 
     for _ in range(epochs):
@@ -192,7 +191,7 @@ def load_model(player: structures.Player) -> Net:
         raise KeyError(player.name)
     if bts := database.load_model(pid):
         ms = pickle.loads(bts)
-        n = Net(nfeature=ms["nfeature"], rnn_hidden=ms["rnn_hidden"])
+        n = Net(nfeature=ms["nfeature"])
         n.load_state_dict(ms["weights"])
         return n
     raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
@@ -207,7 +206,6 @@ def save_model(player: structures.Player, m: Net) -> None:
         pid,
         pickle.dumps(
             {
-                "rnn_hidden": m.rnn_hidden,
                 "nfeature": m.nfeature,
                 "weights": m.state_dict(),
             }
@@ -234,20 +232,19 @@ def xP(
         for nxt in upcoming[:lookahead]:
             points = (
                 model(
-                    torch.tensor(inference, dtype=torch.float32),
+                    torch.tensor(inference, dtype=torch.float32).unsqueeze(0),
                 )
                 .detach()
                 .numpy()
             )
-            assert points.shape == (1,), points.shape
-            expected.extend(points)
+            expected.append(points)
             inference.pop(0)
             inference.append(
                 features(
                     structures.Fixture(
                         **(
                             collections.ChainMap(
-                                {"points": points[0], "minutes": mtm},
+                                {"points": points, "minutes": mtm},
                                 dataclasses.asdict(nxt),
                             )
                         )
@@ -288,7 +285,7 @@ def main() -> None:
     parser.add_argument(
         "--upsample",
         type=int,
-        default=32,
+        default=16,
         help="(default: %(default)s)",
     )
     parser.add_argument(
@@ -301,6 +298,7 @@ def main() -> None:
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
+    players = sorted(fetch.players(), key=lambda x: x.tp())[-100:]
     max_webname = max(len(p.webname) for p in players)
 
     with tqdm(
