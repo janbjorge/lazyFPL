@@ -25,10 +25,9 @@ if conf.debug:
 class NormalizedFeatures:
     at_home: float
     minutes: float
+    opponent: tuple[float, ...]
     opponent_strength: float
     points: float
-    team_strength: float
-    opponent: tuple[float, ...]
 
     def flattend(self) -> tuple[float, ...]:
         def _flatter(obj: object) -> typing.Generator[float | int | bool, None, None]:
@@ -86,10 +85,9 @@ def features(f: structures.Fixture) -> NormalizedFeatures:
     return NormalizedFeatures(
         at_home=(f.at_home - 0.5) / 0.5,
         minutes=minutes_scale.unit_variance_normalization(f.minutes or 0),
-        opponent_strength=(f.opponent_strength - 3) / 2,
         opponent=onehot_team_name(f.opponent),
+        opponent_strength=(f.opponent_strength - 3) / 2,
         points=points_scale.unit_variance_normalization(f.points),
-        team_strength=(f.team_strength - 3) / 2,
     )
 
 
