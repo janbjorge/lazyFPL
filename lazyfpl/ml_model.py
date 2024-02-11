@@ -298,7 +298,6 @@ def main() -> None:
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
-    max_webname = max(len(p.webname) for p in players)
 
     with tqdm(
         ascii=True,
@@ -307,7 +306,6 @@ def main() -> None:
         unit_scale=True,
     ) as bar:
         for player in players:
-            bar.set_description_str(f"{player.webname:<{max_webname}}")
             try:
                 m = train(
                     player,
