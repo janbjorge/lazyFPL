@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import collections
 import dataclasses
 import functools
 import itertools
@@ -223,12 +222,12 @@ def xP(
     inference = [features(f).flattend() for f in fixutres if not f.upcoming][
         -backtrace:
     ]
-    mtm = player.mtm()
+    mtm = int(player.mtm())
     upcoming = [f for f in fixutres if f.upcoming]
     model = load_model(player).eval()
     with torch.no_grad():
         for nxt in upcoming[:lookahead]:
-            points = (
+            points = float(
                 model(
                     torch.tensor(inference, dtype=torch.float32).unsqueeze(0),
                 )
@@ -236,19 +235,9 @@ def xP(
                 .numpy()
             )
             expected.append(points)
+            nxt.points, nxt.minutes = round(points), mtm
             inference.pop(0)
-            inference.append(
-                features(
-                    structures.Fixture(
-                        **(
-                            collections.ChainMap(
-                                {"points": points, "minutes": mtm},
-                                dataclasses.asdict(nxt),
-                            )
-                        )
-                    )
-                ).flattend()
-            )
+            inference.append(features(nxt).flattend())
 
     if conf.debug:
         print(player.name, player.team, expected)
