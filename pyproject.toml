@@ -10,7 +10,7 @@ packages = [
 ]
 readme = "README.md"
 repository = "https://github.com/janbjorge/lazyFPL"
-version = "0.0.18"
+version = "0.1.0"
 keywords = [
     "fantasy premier league",
     "FPL",
