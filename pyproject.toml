@@ -4,6 +4,10 @@ description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 homepage = "https://github.com/janbjorge/lazyFPL"
 license = "MIT"
 name = "lazyfpl"
+packages = [
+  {include = "lazyfpl"},
+  {include = "lazyfpl/py.typed"},
+]
 readme = "README.md"
 repository = "https://github.com/janbjorge/lazyFPL"
 version = "0.0.18"
