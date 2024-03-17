@@ -16,7 +16,7 @@ from lazyfpl import conf, fetch, helpers, ml_model, structures
 class PredictionOutcome:
     """
     Represents the outcome of a prediction, including predicted and
-    actual values, and kickoff time.
+    actual values, and kickoff.
     """
 
     prediceted: float
@@ -34,7 +34,7 @@ def backeval(
     given number of past fixtures.
     """
     with torch.no_grad():
-        net = ml_model.load_model(player).eval()
+        net = ml_model.Net.load(player).eval()
         fixutres = [f for f in player.fixutres if not f.upcoming][-backstep:]
         for *context, target in more_itertools.sliding_window(fixutres, backtrace + 1):
             xP = (

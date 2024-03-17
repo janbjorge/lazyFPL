@@ -66,6 +66,34 @@ class Net(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x.reshape(x.shape[0], -1)).squeeze()
 
+    @staticmethod
+    def load(player: structures.Player) -> Net:
+        """Loads a trained model for the specified player."""
+        pid = populator.player_id_fuzzer(player.name)
+        if pid is None:
+            raise KeyError(player.name)
+        if bts := database.load_model(pid):
+            ms = pickle.loads(bts)
+            n = Net(nfeature=ms["nfeature"])
+            n.load_state_dict(ms["weights"])
+            return n
+        raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
+
+    def save(self, player: structures.Player) -> None:
+        """Saves the trained model for the specified player."""
+        pid = populator.player_id_fuzzer(player.name)
+        if pid is None:
+            raise KeyError(player.name)
+        database.save_model(
+            pid,
+            pickle.dumps(
+                {
+                    "nfeature": self.nfeature,
+                    "weights": self.state_dict(),
+                }
+            ),
+        )
+
 
 @functools.cache
 def onehot_team_name(team_name: str) -> tuple[float, ...]:
@@ -182,35 +210,6 @@ def train(
     return net
 
 
-def load_model(player: structures.Player) -> Net:
-    """Loads a trained model for the specified player."""
-    pid = populator.player_id_fuzzer(player.name)
-    if not pid:
-        raise KeyError(player.name)
-    if bts := database.load_model(pid):
-        ms = pickle.loads(bts)
-        n = Net(nfeature=ms["nfeature"])
-        n.load_state_dict(ms["weights"])
-        return n
-    raise ValueError(f"No model for {player.name=} / {player.team=} / {pid=}.")
-
-
-def save_model(player: structures.Player, m: Net) -> None:
-    """Saves the trained model for the specified player."""
-    pid = populator.player_id_fuzzer(player.name)
-    if not pid:
-        raise KeyError(player.name)
-    database.save_model(
-        pid,
-        pickle.dumps(
-            {
-                "nfeature": m.nfeature,
-                "weights": m.state_dict(),
-            }
-        ),
-    )
-
-
 def xP(
     player: structures.Player,
     lookahead: int = conf.lookahead,
@@ -225,11 +224,11 @@ def xP(
     ]
     mtm = int(player.mtm())
     upcoming = [f for f in fixutres if f.upcoming]
-    model = load_model(player).eval()
+    net = Net.load(player).eval()
     with torch.no_grad():
         for nxt in upcoming[:lookahead]:
             points = float(
-                model(
+                net(
                     torch.tensor(inference, dtype=torch.float32).unsqueeze(0),
                 )
                 .detach()
@@ -319,7 +318,7 @@ def main() -> None:
             except Exception as e:
                 bar.write("".join(traceback.format_exception(e)))
             else:
-                save_model(player, m)
+                m.save(player)
                 bar.write(
                     f"{xP(player):<6.1f} "
                     + f"{player.webname} "
