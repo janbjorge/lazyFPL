@@ -277,7 +277,7 @@ def populate_games() -> None:
             unit_scale=True,
         ):
             historic = structures.HistoricGame.model_validate(fixture)
-            if pid := player_id_fuzzer(historic.name):
+            if (pid := player_id_fuzzer(historic.name)) is not None:
                 to_insert.append(
                     (
                         session,
@@ -337,6 +337,9 @@ def populate_games() -> None:
                 is_home = team == team_h
                 opponent = list({team, team_a, team_h} - {team})[0]
 
+                pid = player_id_fuzzer(fullname)
+                assert pid is not None
+
                 database.execute(
                     game_sql,
                     (
@@ -348,7 +351,7 @@ def populate_games() -> None:
                         None,
                         upcoming.gw,
                         upcoming_position(fullname),
-                        player_id_fuzzer(fullname),
+                        pid,
                         structures.CURRENT_SESSION,
                         team,
                         structures.CURRENT_SESSION,
