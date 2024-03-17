@@ -53,7 +53,7 @@ def backeval(
             yield PredictionOutcome(
                 prediceted=xP,
                 target=target.points,
-                kickoff=target.kickoff_time,
+                kickoff=target.kickoff,
             )
 
 

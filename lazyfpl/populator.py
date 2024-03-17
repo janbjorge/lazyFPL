@@ -76,25 +76,24 @@ def session_from_url(url: str) -> str:
 
 
 @functools.cache
-def past_team_lists() -> dict[str, list[structures.Team]]:
+def past_team_lists() -> dict[str, list[structures.HistoricTeam]]:
     """Fetches and parses past team data from external sources for different seasons."""
-    urls = (
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
-    )
 
     return {
         session_from_url(url): [
-            structures.Team.model_validate(t)
+            structures.HistoricTeam.model_validate(t)
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
         ]
-        for url in urls
+        for url in (
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
+        )
     }
 
 
 @functools.cache
-def past_team_lookup(tid: int, session: database.SESSIONS) -> str:
+def past_team_lookup(tid: int, session: structures.SESSIONS) -> str:
     """Finds the team name for a given team ID and session."""
     assert isinstance(tid, int)
     for team in past_team_lists()[session]:
@@ -106,14 +105,13 @@ def past_team_lookup(tid: int, session: database.SESSIONS) -> str:
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     """Fetches and parses past game data from external sources for different seasons."""
-    urls = (
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-    )
     return {
         session_from_url(url): list(csv.DictReader(io.StringIO(requests.get(url).text)))
-        for url in urls
+        for url in (
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
+        )
     }
 
 
@@ -209,7 +207,7 @@ def populate_teams() -> None:
             )
 
 
-def populate_players(session: database.SESSIONS = database.CURRENT_SESSION) -> None:
+def populate_players(session: structures.SESSIONS = structures.CURRENT_SESSION) -> None:
     """Populates the database with player data for the specified session."""
     sql = """
         INSERT INTO player(
@@ -300,8 +298,6 @@ def populate_games() -> None:
                 )
         database.executemany(game_sql, tuple(to_insert))
 
-    jobs = list[concurrent.futures.Future]()
-
     def pooled_summary(
         id: int,
         fullname: str,
@@ -310,15 +306,15 @@ def populate_games() -> None:
         return summary(id)["fixtures"], fullname, team
 
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        for ele in bootstrap()["elements"]:
-            jobs.append(
-                pool.submit(
-                    pooled_summary,
-                    ele["id"],
-                    " ".join((ele["first_name"], ele["second_name"])),
-                    upcoming_team_id_to_name(ele["team"]),
-                )
+        jobs = [
+            pool.submit(
+                pooled_summary,
+                element["id"],
+                " ".join((element["first_name"], element["second_name"])),
+                upcoming_team_id_to_name(element["team"]),
             )
+            for element in bootstrap()["elements"]
+        ]
 
         for done in tqdm(
             concurrent.futures.as_completed(jobs),
@@ -344,7 +340,7 @@ def populate_games() -> None:
                 database.execute(
                     game_sql,
                     (
-                        database.CURRENT_SESSION,
+                        structures.CURRENT_SESSION,
                         True,
                         is_home,
                         upcoming.kickoff_time,
@@ -353,9 +349,9 @@ def populate_games() -> None:
                         upcoming.gw,
                         upcoming_position(fullname),
                         player_id_fuzzer(fullname),
-                        database.CURRENT_SESSION,
+                        structures.CURRENT_SESSION,
                         team,
-                        database.CURRENT_SESSION,
+                        structures.CURRENT_SESSION,
                         opponent,
                         -1,
                     ),
@@ -372,7 +368,7 @@ def upcoming_team_id_to_name(id: int) -> str:
 
 
 @functools.cache
-def upcoming_position(name: str) -> database.POSITIONS:
+def upcoming_position(name: str) -> structures.POSITIONS:
     """Determines the position of a player based on their name for upcoming games."""
     for element in bootstrap()["elements"]:
         if f'{element["first_name"]} {element["second_name"]}' == name:

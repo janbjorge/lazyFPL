@@ -110,26 +110,6 @@ def players() -> list[structures.Player]:
         lambda x: (x.player, x.webname),
     ):
         games = sorted(_games, key=lambda x: x.kickoff)
-        fixtures = [
-            structures.Fixture(
-                at_home=game.is_home,
-                gw=game.gw,
-                kickoff_time=game.kickoff,
-                minutes=game.minutes,
-                opponent=game.opponent,
-                opponent_short=game.opponent_short,
-                player=name,
-                points=game.points,
-                session=game.session,
-                team=game.team,
-                team_short=game.team_short,
-                upcoming=game.upcoming,
-                webname=webname,
-                team_strength=game.team_strength,
-                opponent_strength=game.opponent_strength,
-            )
-            for game in games
-        ]
 
         try:
             next_upcoming = [g for g in games if g.upcoming][0]
@@ -141,7 +121,7 @@ def players() -> list[structures.Player]:
 
         pool.append(
             structures.Player(
-                fixutres=fixtures,
+                fixutres=games,
                 name=name,
                 news=games[-1].news,
                 position=games[-1].position,

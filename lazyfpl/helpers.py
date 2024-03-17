@@ -6,7 +6,7 @@ from typing import Sequence, get_args
 
 from tabulate import tabulate
 
-from lazyfpl import conf, database, structures
+from lazyfpl import conf, structures
 
 
 def squad_price(lineup: Sequence[structures.Player]) -> int:
@@ -99,8 +99,8 @@ def tsscore(lineup: Sequence[structures.Player], n: int = conf.lookahead) -> flo
 
 
 @functools.cache
-def position_order(position: database.POSITIONS) -> int:
-    return {p: n for n, p in enumerate(get_args(database.POSITIONS))}[position]
+def position_order(position: structures.POSITIONS) -> int:
+    return {p: n for n, p in enumerate(get_args(structures.POSITIONS))}[position]
 
 
 def tabulater(tabular_data: list[dict[str, str | float | None]]) -> str:

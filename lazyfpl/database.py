@@ -2,20 +2,13 @@
 from __future__ import annotations
 
 import dataclasses
-import datetime
 import functools
 import pathlib
 import sqlite3
 import statistics
 import typing as T
 
-import pydantic
-
-from lazyfpl import conf
-
-SESSIONS = T.Literal["2021-22", "2022-23", "2023-24"]
-CURRENT_SESSION = T.get_args(SESSIONS)[-1]
-POSITIONS = T.Literal["GKP", "DEF", "MID", "FWD"]
+from lazyfpl import conf, structures
 
 
 @dataclasses.dataclass
@@ -35,28 +28,6 @@ class Summary:
 
     def unit_variance_normalization(self, value: float) -> float:
         return (value - self.mean) / self.variance
-
-
-class Game(pydantic.BaseModel):
-    gw: int
-    is_home: bool
-    kickoff: datetime.datetime
-    minutes: int | None
-    news: str
-    opponent: str
-    opponent_short: str
-    opponent_strength: int
-    player_id: int
-    player: str
-    points: int | None
-    position: POSITIONS
-    selected: int
-    session: SESSIONS
-    team: str
-    team_short: str
-    team_strength: int
-    upcoming: bool
-    webname: str
 
 
 @functools.cache
@@ -84,7 +55,7 @@ def executemany(sql: str, parameters: tuple = ()) -> list[dict]:
 
 
 @functools.cache
-def games() -> list[Game]:
+def games() -> list[structures.Game]:
     """Retrieves a list of Game objects representing football games from the database."""
     rows = execute(
         """
@@ -113,7 +84,7 @@ def games() -> list[Game]:
     """
     )
 
-    return [Game.model_validate(row) for row in rows]
+    return [structures.Game.model_validate(row) for row in rows]
 
 
 def price(pid: int) -> int:

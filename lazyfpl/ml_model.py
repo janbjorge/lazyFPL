@@ -76,13 +76,13 @@ def onehot_team_name(team_name: str) -> tuple[float, ...]:
     return tuple(enc)
 
 
-def features(f: structures.Fixture) -> NormalizedFeatures:
+def features(f: structures.Game) -> NormalizedFeatures:
     """Generates and returns normalized features for a given fixture."""
     assert f.points is not None
     points_scale = database.points()
     minutes_scale = database.minutes()
     return NormalizedFeatures(
-        at_home=(f.at_home - 0.5) / 0.5,
+        at_home=(f.is_home - 0.5) / 0.5,
         minutes=minutes_scale.unit_variance_normalization(f.minutes or 0),
         opponent=onehot_team_name(f.opponent),
         opponent_strength=(f.opponent_strength - 3) / 2,
@@ -102,17 +102,17 @@ class SequenceDataset(TorchDataset):
 
 
 def samples(
-    fixtures: list[structures.Fixture],
+    fixtures: list[structures.Game],
     upsample: int,
     backtrace: int = conf.backtrace,
 ) -> typing.Iterator[FeatureBundle]:
     """Generates training samples from a list of fixtures, considering
     upsampling and backtrace length."""
     fixtures = [f for f in fixtures if not f.upcoming]
-    fixtures = sorted(fixtures, key=lambda x: x.kickoff_time)
+    fixtures = sorted(fixtures, key=lambda x: x.kickoff)
     # time --->
-    min_ko = min(f.kickoff_time for f in fixtures)
-    max_ko = max(f.kickoff_time for f in fixtures)
+    min_ko = min(f.kickoff for f in fixtures)
+    max_ko = max(f.kickoff for f in fixtures)
 
     if len(fixtures) < backtrace + 1:
         raise ValueError("To few samples.")
@@ -123,7 +123,7 @@ def samples(
         assert len(context) == backtrace
         repeat = max(
             (
-                math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
+                math.exp((target.kickoff - min_ko) / (max_ko - min_ko) * 2)
                 / (math.e**2)
                 * upsample
             ),
@@ -219,7 +219,7 @@ def xP(
     """Calculates the expected points (xP) for a player based
     on their upcoming fixtures."""
     expected = list[float]()
-    fixutres = sorted(player.fixutres, key=lambda x: x.kickoff_time)
+    fixutres = sorted(player.fixutres, key=lambda x: x.kickoff)
     inference = [features(f).flattend() for f in fixutres if not f.upcoming][
         -backtrace:
     ]

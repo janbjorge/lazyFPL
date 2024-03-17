@@ -3,25 +3,32 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import statistics
-from typing import Generator, Sequence
+from typing import Generator, Literal, Sequence, get_args
 
 import pydantic
 
-from lazyfpl import conf, database, helpers
+from lazyfpl import conf, helpers
+
+SESSIONS = Literal["2021-22", "2022-23", "2023-24"]
+CURRENT_SESSION = get_args(SESSIONS)[-1]
+POSITIONS = Literal["GKP", "DEF", "MID", "FWD"]
 
 
-@dataclasses.dataclass
-class Fixture:
-    at_home: bool
+class Game(pydantic.BaseModel):
     gw: int
-    kickoff_time: datetime.datetime
+    is_home: bool
+    kickoff: datetime.datetime
     minutes: int | None
+    news: str
     opponent: str
     opponent_short: str
     opponent_strength: int
+    player_id: int
     player: str
     points: int | None
-    session: database.SESSIONS
+    position: POSITIONS
+    selected: int
+    session: SESSIONS
     team: str
     team_short: str
     team_strength: int
@@ -31,10 +38,10 @@ class Fixture:
 
 @dataclasses.dataclass(eq=True, unsafe_hash=True)
 class Player:
-    fixutres: list[Fixture] = dataclasses.field(compare=False, repr=False)
+    fixutres: list[Game] = dataclasses.field(compare=False, repr=False)
     name: str = dataclasses.field(compare=True)
     news: str = dataclasses.field(compare=True)
-    position: database.POSITIONS = dataclasses.field(compare=False)
+    position: POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
     selected: int | None = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
@@ -42,7 +49,7 @@ class Player:
     webname: str = dataclasses.field(compare=True)
     xP: float | None
 
-    def tp(self, session: database.SESSIONS = database.CURRENT_SESSION) -> int:
+    def tp(self, session: SESSIONS = CURRENT_SESSION) -> int:
         return sum(f.points or 0 for f in self.fixutres if f.session == session)
 
     def mtm(self, last: int = conf.backtrace) -> float:
@@ -54,7 +61,7 @@ class Player:
                     f.minutes or 0
                     for f in sorted(
                         (f for f in self.fixutres if not f.upcoming),
-                        key=lambda x: x.kickoff_time,
+                        key=lambda x: x.kickoff,
                     )[-last:]
                 )
             )
@@ -70,7 +77,7 @@ class Player:
             x.opponent_short
             for x in sorted(
                 (f for f in self.fixutres if f.upcoming),
-                key=lambda f: f.kickoff_time,
+                key=lambda f: f.kickoff,
             )
         ]
 
@@ -175,7 +182,7 @@ class HistoricGame(pydantic.BaseModel):
     own_goals: int
     penalties_missed: int
     penalties_saved: int
-    position: database.POSITIONS
+    position: POSITIONS
     red_cards: int
     round: int
     saves: int
@@ -198,6 +205,22 @@ class HistoricGame(pydantic.BaseModel):
         return "GKP" if value == "GK" else value
 
 
+class HistoricTeam(pydantic.BaseModel):
+    code: int
+    draw: int
+    id: int
+    loss: int
+    name: str
+    played: int
+    points: int
+    position: int
+    pulse_id: int
+    short_name: str
+    strength: int
+    unavailable: bool
+    win: int
+
+
 class UpcommingGame(pydantic.BaseModel):
     code: int
     difficulty: int
@@ -214,19 +237,3 @@ class UpcommingGame(pydantic.BaseModel):
     team_a: int
     team_h_score: int | None = pydantic.Field(default=None)
     team_h: int
-
-
-class Team(pydantic.BaseModel):
-    code: int
-    draw: int
-    id: int
-    loss: int
-    name: str
-    played: int
-    points: int
-    position: int
-    pulse_id: int
-    short_name: str
-    strength: int
-    unavailable: bool
-    win: int
