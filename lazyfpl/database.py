@@ -37,28 +37,34 @@ def games() -> list[structures.Game]:
     """Retrieves a list of Game objects representing football games from the database."""
     rows = execute(
         """
-        select
-            gw,
-            is_home,
-            kickoff,
-            minutes,
-            player_id,
-            points,
-            position,
-            selected,
-            session,
-            upcoming,
-            (select name from player where id = game.player_id)                    as player,
-            (select news from player where id = game.player_id)                    as news,
-            (select webname from player where id = game.player_id)                 as webname,
-            (select name from team where team = team.id)                           as team,
-            (select strength from team where team.id = game.team)                  as team_strength,
-            (select short_name from team where team.id = game.team)                as team_short,
-            (select name from team where opponent = team.id)                       as opponent,
-            (select strength from team where team.id = game.opponent)              as opponent_strength,
-            (select short_name from team where opponent = team.id)                 as opponent_short
-        from
-            game
+        SELECT
+            g.gw,
+            g.is_home,
+            g.kickoff,
+            g.minutes,
+            g.player_id,
+            g.points,
+            g.position,
+            g.selected,
+            g.session,
+            g.upcoming,
+            p.name            AS player,
+            p.news            AS news,
+            p.webname         AS webname,
+            t.name            AS team,
+            t.strength        AS team_strength,
+            t.short_name      AS team_short,
+            opp.name          AS opponent,
+            opp.strength      AS opponent_strength,
+            opp.short_name    AS opponent_short
+        FROM
+            game g
+        JOIN
+            player p ON p.id = g.player_id
+        JOIN
+            team t ON t.id = g.team
+        JOIN
+            team opp ON opp.id = g.opponent
     """
     )
 
