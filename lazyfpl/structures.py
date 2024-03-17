@@ -13,6 +13,7 @@ from lazyfpl import conf, database, helpers
 @dataclasses.dataclass
 class Fixture:
     at_home: bool
+    gw: int
     kickoff_time: datetime.datetime
     minutes: int | None
     opponent: str
@@ -164,7 +165,7 @@ class HistoricGame(pydantic.BaseModel):
     fixture: float
     goals_conceded: float
     goals_scored: float
-    GW: int
+    gw: int = pydantic.Field(alias="GW")
     ict_index: float
     influence: float
     kickoff_time: datetime.datetime
@@ -203,6 +204,7 @@ class UpcommingGame(pydantic.BaseModel):
     event_name: str | None = pydantic.Field(default=None)
     event: int | None = pydantic.Field(default=None)
     finished: bool
+    gw: int | None = pydantic.Field(alias="event")
     id: int
     is_home: bool
     kickoff_time: datetime.datetime | None = pydantic.Field(default=None)

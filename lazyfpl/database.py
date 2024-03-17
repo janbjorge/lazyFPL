@@ -38,6 +38,7 @@ class Summary:
 
 
 class Game(pydantic.BaseModel):
+    gw: int
     is_home: bool
     kickoff: datetime.datetime
     minutes: int | None
@@ -88,15 +89,16 @@ def games() -> list[Game]:
     rows = execute(
         """
         select
+            gw,
             is_home,
             kickoff,
             minutes,
+            player_id,
             points,
             position,
+            selected,
             session,
             upcoming,
-            player_id,
-            selected,
             (select name from player where id = game.player_id)                    as player,
             (select news from player where id = game.player_id)                    as news,
             (select webname from player where id = game.player_id)                 as webname,

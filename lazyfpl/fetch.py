@@ -113,6 +113,7 @@ def players() -> list[structures.Player]:
         fixtures = [
             structures.Fixture(
                 at_home=game.is_home,
+                gw=game.gw,
                 kickoff_time=game.kickoff,
                 minutes=game.minutes,
                 opponent=game.opponent,
@@ -137,6 +138,7 @@ def players() -> list[structures.Player]:
             if conf.debug:
                 traceback.print_exception(e)
             continue
+
         pool.append(
             structures.Player(
                 fixutres=fixtures,

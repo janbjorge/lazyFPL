@@ -10,7 +10,6 @@ import urllib.parse as up
 
 import pytz
 import requests
-from dateutil.parser import parse as dtparser
 from tqdm.std import tqdm
 
 from lazyfpl import database, structures
@@ -159,6 +158,7 @@ def initialize_database() -> None:
             player_id INTEGER NOT NULL,
             points INTEGER,
             position TEXT NOT NULL,
+            gw INTEGER NOT NULL,
             session TEXT NOT NULL,
             team INTEGER NOT NULL,
             upcoming INTEGER NOT NULL,
@@ -254,6 +254,7 @@ def populate_games() -> None:
             kickoff,
             minutes,
             points,
+            gw,
 
             position,
             player_id,
@@ -262,8 +263,7 @@ def populate_games() -> None:
 
             selected
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?,
-            ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT id FROM team WHERE session = ? AND name = ?),
             (SELECT id FROM team WHERE session = ? AND name = ?),
             ?
@@ -288,6 +288,7 @@ def populate_games() -> None:
                         historic.kickoff_time,
                         historic.minutes,
                         historic.total_points,
+                        historic.gw,
                         historic.position,
                         pid,
                         session,
@@ -298,11 +299,6 @@ def populate_games() -> None:
                     ),
                 )
         database.executemany(game_sql, tuple(to_insert))
-
-    now = now_tz_utc()
-    upcoming_games: list[int] = [
-        e["id"] for e in bootstrap()["events"] if dtparser(e["deadline_time"]) > now
-    ]
 
     jobs = list[concurrent.futures.Future]()
 
@@ -335,32 +331,35 @@ def populate_games() -> None:
             fixtures, fullname, team = done.result()
             for fixture in fixtures:
                 upcoming = structures.UpcommingGame.model_validate(fixture)
-                if not upcoming.event_name:
+
+                # Match is postponed
+                if upcoming.gw is None:
                     continue
 
-                if upcoming.event in upcoming_games:
-                    team_h = upcoming_team_id_to_name(upcoming.team_h)
-                    team_a = upcoming_team_id_to_name(upcoming.team_a)
-                    is_home = team == team_h
-                    opponent = list({team, team_a, team_h} - {team})[0]
-                    database.execute(
-                        game_sql,
-                        (
-                            database.CURRENT_SESSION,
-                            True,
-                            is_home,
-                            upcoming.kickoff_time,
-                            None,
-                            None,
-                            upcoming_position(fullname),
-                            player_id_fuzzer(fullname),
-                            database.CURRENT_SESSION,
-                            team,
-                            database.CURRENT_SESSION,
-                            opponent,
-                            -1,
-                        ),
-                    )
+                team_h = upcoming_team_id_to_name(upcoming.team_h)
+                team_a = upcoming_team_id_to_name(upcoming.team_a)
+                is_home = team == team_h
+                opponent = list({team, team_a, team_h} - {team})[0]
+
+                database.execute(
+                    game_sql,
+                    (
+                        database.CURRENT_SESSION,
+                        True,
+                        is_home,
+                        upcoming.kickoff_time,
+                        None,
+                        None,
+                        upcoming.gw,
+                        upcoming_position(fullname),
+                        player_id_fuzzer(fullname),
+                        database.CURRENT_SESSION,
+                        team,
+                        database.CURRENT_SESSION,
+                        opponent,
+                        -1,
+                    ),
+                )
 
 
 @functools.cache
