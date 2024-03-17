@@ -16,6 +16,8 @@ POSITIONS = Literal["GKP", "DEF", "MID", "FWD"]
 
 @dataclasses.dataclass
 class Summary:
+    min: float
+    max: float
     mean: float
     std: float
     variance: float
@@ -24,9 +26,11 @@ class Summary:
     def fromiter(values: Iterable[float]) -> Summary:
         """Creates a SampleSummary from an iterable of float values."""
         return Summary(
-            mean=statistics.mean(values),
-            std=statistics.stdev(values),
-            variance=statistics.variance(values),
+            min=min(values),
+            max=max(values),
+            mean=(mean := statistics.mean(values)),
+            std=statistics.stdev(values, mean),
+            variance=statistics.variance(values, mean),
         )
 
     def unit_variance_normalization(self, value: float) -> float:
