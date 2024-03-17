@@ -121,7 +121,7 @@ def samples(
         # Split window into context and target, context beeing the players previues
         # performences being used to predict the outcome of the upcoming match.
         assert len(context) == backtrace
-        repat = max(
+        repeat = max(
             (
                 math.exp((target.kickoff_time - min_ko) / (max_ko - min_ko) * 2)
                 / (math.e**2)
@@ -135,7 +135,7 @@ def samples(
                 features=tuple(features(c) for c in context),
                 target=target.points,
             ),
-            round(repat),
+            round(repeat),
         )
 
 
@@ -282,10 +282,18 @@ def main() -> None:
         default=16,
         help="(default: %(default)s)",
     )
+    parser.add_argument(
+        "--no-news",
+        action="store_true",
+        help="Drop players with news attched to them. (default: %(default)s)",
+    )
 
     args = parser.parse_args()
 
     players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
+
+    if args.no_news:
+        players = [p for p in players if not p.news]
 
     with tqdm(
         ascii=True,
