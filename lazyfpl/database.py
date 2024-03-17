@@ -1,33 +1,11 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
-import dataclasses
 import functools
 import pathlib
 import sqlite3
-import statistics
-import typing as T
 
 from lazyfpl import conf, structures
-
-
-@dataclasses.dataclass
-class Summary:
-    mean: float
-    std: float
-    variance: float
-
-    @staticmethod
-    def fromiter(values: T.Iterable[float]) -> Summary:
-        """Creates a SampleSummary from an iterable of float values."""
-        return Summary(
-            mean=statistics.mean(values),
-            std=statistics.stdev(values),
-            variance=statistics.variance(values),
-        )
-
-    def unit_variance_normalization(self, value: float) -> float:
-        return (value - self.mean) / self.variance
 
 
 @functools.cache
@@ -150,12 +128,13 @@ def load_model(player_id: int) -> bytes:
 
 
 @functools.cache
-def points() -> Summary:
+def points() -> structures.Summary:
     """SampleSummary of points scored in games."""
-    p = [
-        row["points"]
-        for row in execute(
-            """
+    return structures.Summary.fromiter(
+        [
+            row["points"]
+            for row in execute(
+                """
         SELECT
             points
         FROM
@@ -163,18 +142,19 @@ def points() -> Summary:
         WHERE
             points is not null
     """
-        )
-    ]
-    return Summary.fromiter(p)
+            )
+        ]
+    )
 
 
 @functools.cache
-def minutes() -> Summary:
+def minutes() -> structures.Summary:
     """SampleSummary of minutes played in games."""
-    p = [
-        row["minutes"]
-        for row in execute(
-            """
+    return structures.Summary.fromiter(
+        [
+            row["minutes"]
+            for row in execute(
+                """
         SELECT
             minutes
         FROM
@@ -182,6 +162,6 @@ def minutes() -> Summary:
         WHERE
             minutes is not null
     """
-        )
-    ]
-    return Summary.fromiter(p)
+            )
+        ]
+    )

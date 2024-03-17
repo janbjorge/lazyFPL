@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import statistics
-from typing import Generator, Literal, Sequence, get_args
+from typing import Generator, Iterable, Literal, Sequence, get_args
 
 import pydantic
 
@@ -12,6 +12,25 @@ from lazyfpl import conf, helpers
 SESSIONS = Literal["2021-22", "2022-23", "2023-24"]
 CURRENT_SESSION = get_args(SESSIONS)[-1]
 POSITIONS = Literal["GKP", "DEF", "MID", "FWD"]
+
+
+@dataclasses.dataclass
+class Summary:
+    mean: float
+    std: float
+    variance: float
+
+    @staticmethod
+    def fromiter(values: Iterable[float]) -> Summary:
+        """Creates a SampleSummary from an iterable of float values."""
+        return Summary(
+            mean=statistics.mean(values),
+            std=statistics.stdev(values),
+            variance=statistics.variance(values),
+        )
+
+    def unit_variance_normalization(self, value: float) -> float:
+        return (value - self.mean) / self.variance
 
 
 class Game(pydantic.BaseModel):
