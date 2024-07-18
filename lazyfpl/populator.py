@@ -85,6 +85,7 @@ def past_team_lists() -> dict[str, list[structures.HistoricTeam]]:
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
         ]
         for url in (
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2024-25/teams.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
@@ -108,6 +109,7 @@ def past_game_lists() -> dict[str, list[dict]]:
     return {
         session_from_url(url): list(csv.DictReader(io.StringIO(requests.get(url).text)))
         for url in (
+            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2024-25/gws/merged_gw.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
             "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",

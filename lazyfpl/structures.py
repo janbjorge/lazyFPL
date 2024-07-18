@@ -9,7 +9,7 @@ import pydantic
 
 from lazyfpl import conf, helpers
 
-SESSIONS = Literal["2021-22", "2022-23", "2023-24"]
+SESSIONS = Literal["2021-22", "2022-23", "2023-24", "2024-25"]
 CURRENT_SESSION = get_args(SESSIONS)[-1]
 POSITIONS = Literal["GKP", "DEF", "MID", "FWD"]
 
