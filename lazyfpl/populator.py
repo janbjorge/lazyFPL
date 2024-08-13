@@ -7,6 +7,7 @@ import datetime
 import functools
 import io
 import urllib.parse as up
+from typing import Generator, get_args
 
 import pytz
 import requests
@@ -70,26 +71,23 @@ def player_id_fuzzer(name: str) -> int | None:
     return None
 
 
-def session_from_url(url: str) -> str:
-    """Extracts the session year from a given URL."""
-    return up.urlparse(url).path.split("/")[5]
+def teams_urls() -> Generator[tuple[str, str], None, None]:
+    for session in get_args(structures.SESSIONS):
+        yield (
+            session,
+            f"https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/{session}/teams.csv",
+        )
 
 
 @functools.cache
 def past_team_lists() -> dict[str, list[structures.HistoricTeam]]:
     """Fetches and parses past team data from external sources for different seasons."""
-
     return {
-        session_from_url(url): [
+        session: [
             structures.HistoricTeam.model_validate(t)
             for t in csv.DictReader(io.StringIO(requests.get(url).text))
         ]
-        for url in (
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2024-25/teams.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/teams.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/teams.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/teams.csv",
-        )
+        for session, url in teams_urls()
     }
 
 
@@ -103,17 +101,20 @@ def past_team_lookup(tid: int, session: structures.SESSIONS) -> str:
     raise ValueError(f"No match: {tid} / {session}.")
 
 
+def merged_gw_urls() -> Generator[tuple[str, str], None, None]:
+    for session in get_args(structures.SESSIONS):
+        yield (
+            session,
+            f"https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/{session}/gws/merged_gw.csv",
+        )
+
+
 @functools.cache
 def past_game_lists() -> dict[str, list[dict]]:
     """Fetches and parses past game data from external sources for different seasons."""
     return {
-        session_from_url(url): list(csv.DictReader(io.StringIO(requests.get(url).text)))
-        for url in (
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2024-25/gws/merged_gw.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2023-24/gws/merged_gw.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2022-23/gws/merged_gw.csv",
-            "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2021-22/gws/merged_gw.csv",
-        )
+        session: list(csv.DictReader(io.StringIO(requests.get(url).text)))
+        for session, url in merged_gw_urls()
     }
 
 
