@@ -65,6 +65,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
 ignore = [
     "C901",
     "PLR0912",
@@ -86,6 +89,6 @@ select = [
     "PD",
     "PL",
 ]
-line-length = 88
+
 [tool.ruff.lint.isort]
 combine-as-imports = true
