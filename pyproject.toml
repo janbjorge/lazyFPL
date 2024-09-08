@@ -1,16 +1,17 @@
-[tool.poetry]
-authors = ["JB Lovland <janbjorge@gmail.com>"]
-description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
-homepage = "https://github.com/janbjorge/lazyFPL"
-license = "MIT"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+requires-python = ">= 3.11"
 name = "lazyfpl"
-packages = [
-  {include = "lazyfpl"},
-  {include = "lazyfpl/py.typed"},
-]
+version = "0.3.0"
+description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "JB Lovland", email = "janbjorge@gmail.com"}]
+homepage = "https://github.com/janbjorge/lazyFPL"
 repository = "https://github.com/janbjorge/lazyFPL"
-version = "0.2.0"
 keywords = [
     "fantasy premier league",
     "FPL",
@@ -38,31 +39,31 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-pydantic = "^2.6.1"
-tqdm = "^4.66.2"
-requests = "^2.31.0"
-numpy = "^1.26.4"
-python-dateutil = "^2.8.2"
-pytz = "^2024.1"
-torch = "^2.2.0"
-tabulate = "^0.9.0"
-more-itertools = "^10.2.0"
+dependencies = [
+    "pydantic",
+    "tqdm",
+    "requests",
+    "numpy",
+    "python-dateutil",
+    "pytz",
+    "torch",
+    "tabulate",
+    "more-itertools",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.2.1"
-mypy = "^1.8.0"
-types-pytz = "^2024.1.0.20240203"
-types-python-dateutil = "^2.8.19.20240106"
-types-requests = "^2.31.0.20240125"
-tqdm-stubs = "^0.2.1"
-pytest = "^8.0.0"
-types-tabulate = "^0.9.0.20240106"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pytest",
+    "ruff",
+    "tqdm-stubs",
+    "types-python-dateutil",
+    "types-pytz",
+    "types-requests",
+    "types-tabulate"
+]
+
 
 [tool.ruff]
 line-length = 88
@@ -92,3 +93,6 @@ select = [
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.hatch.metadata]
+allow-direct-references = true
