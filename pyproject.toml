@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 requires-python = ">= 3.11"
 name = "lazyfpl"
-version = "0.3.0"
+version = "0.4.0"
 description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 readme = "README.md"
 license = {text = "MIT"}
