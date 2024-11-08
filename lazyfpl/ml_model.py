@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import dataclasses
 import functools
 import itertools
@@ -245,53 +244,17 @@ def xP(
     return round(sum(expected), 1)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="Player model trainer.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def main(
+    epochs: int = 5,
+    lr: float = 0.01,
+    min_mtm: int = 0,
+    upsample: int = 16,
+    batch_size: int = 16,
+    no_news: bool = False,
+) -> None:
+    players = [p for p in fetch.players() if p.mtm() >= min_mtm]
 
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=5,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=0.01,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-mtm",
-        type=int,
-        default=0,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--upsample",
-        type=int,
-        default=16,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=16,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--no-news",
-        action="store_true",
-        help="Drop players with news attched to them. (default: %(default)s)",
-    )
-
-    args = parser.parse_args()
-
-    players = [p for p in fetch.players() if p.mtm() >= args.min_mtm]
-
-    if args.no_news:
+    if no_news:
         players = [p for p in players if not p.news]
 
     with tqdm(
@@ -304,10 +267,10 @@ def main() -> None:
             try:
                 m = train(
                     player,
-                    epochs=args.epochs,
-                    lr=args.lr,
-                    upsample=args.upsample,
-                    batch_size=args.batch_size,
+                    epochs=epochs,
+                    lr=lr,
+                    upsample=upsample,
+                    batch_size=batch_size,
                 )
             except (
                 IndexError,

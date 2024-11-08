@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import argparse
 import concurrent.futures
 import csv
 import datetime
 import functools
 import io
-import urllib.parse as up
 from typing import Generator, get_args
 
 import pytz
@@ -384,12 +382,6 @@ def upcoming_position(name: str) -> structures.POSITIONS:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="Populator",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.parse_args()
-
     nuke_database()
     initialize_database()
     populate_teams()

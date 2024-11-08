@@ -49,6 +49,7 @@ dependencies = [
     "torch",
     "tabulate",
     "more-itertools",
+    "typer",
 ]
 
 
@@ -64,6 +65,8 @@ dev = [
     "types-tabulate"
 ]
 
+[project.scripts]
+fpl = "lazyfpl.__main__:main"
 
 [tool.ruff]
 line-length = 88

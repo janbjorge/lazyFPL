@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import collections
 import heapq
 import itertools
@@ -196,105 +195,40 @@ def lineups_xp(
     ]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="Lineup optimizer",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    parser.add_argument(
-        "--budget-lower",
-        type=int,
-        default=900,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--budget-upper",
-        type=int,
-        default=1_000,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--gkp-def-not-same-team",
-        action="store_true",
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--include",
-        nargs="+",
-        default=[],
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--keep-squad",
-        type=int,
-        default=1_000,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--max-def-per-team",
-        type=int,
-        default=3,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--max-players-per-team",
-        type=int,
-        default=3,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-mtm",
-        type=float,
-        default=0.0,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-xp",
-        type=float,
-        default=0.0,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--no-news",
-        action="store_true",
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--remove",
-        nargs="+",
-        default=[],
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--top-position-price",
-        type=int,
-        default=0,
-        help="(default: %(default)s)",
-    )
-
-    args = parser.parse_args()
-
+def main(
+    budget_lower: int,
+    budget_upper: int,
+    gkp_def_not_same_team: bool,
+    include: list[str],
+    keep_squad: int,
+    max_def_per_team: int,
+    max_players_per_team: int,
+    min_mtm: float,
+    min_xp: float,
+    no_news: bool,
+    remove: list[str],
+    top_position_price: int,
+) -> None:
     pool = [p for p in fetch.players() if p.xP is not None]
-    pool = [p for p in pool if p.mtm() >= args.min_mtm and p.xP >= args.min_xp]
+    pool = [p for p in pool if p.mtm() >= min_mtm and p.xP >= min_xp]
 
-    if args.no_news:
+    if no_news:
         pool = [p for p in pool if not p.news]
 
     player_names = {p.webname.lower() for p in pool}
-    remove: set[str] = {r.lower() for r in args.remove if r.lower() in player_names}
+    remove: set[str] = {r.lower() for r in remove if r.lower() in player_names}
     pool = [p for p in pool if p.webname.lower() not in remove]
 
     team_names = {p.team.lower() for p in pool}
-    remove_team: set[str] = {r.lower() for r in args.remove if r.lower() in team_names}
+    remove_team: set[str] = {r.lower() for r in remove if r.lower() in team_names}
     pool = [p for p in pool if p.team.lower() not in remove_team]
 
-    if args.top_position_price:
+    if top_position_price:
         pool = list(
             set(
                 position_price_candidates(
                     pool=pool,
-                    topn=args.top_position_price,
+                    topn=top_position_price,
                 )
             )
         )
@@ -303,9 +237,7 @@ def main() -> None:
         {
             p
             for p in fetch.players()
-            if p.webname in args.include
-            or p.name in args.include
-            or p.team in args.include
+            if p.webname in include or p.name in include or p.team in include
         }
     )
     pool += include
@@ -343,23 +275,23 @@ def main() -> None:
             ),
             [p for p in include if p.position == "FWD"],
         ),
-        budget_lower=args.budget_lower,
-        budget_upper=args.budget_upper,
-        max_players_per_team=args.max_players_per_team,
-        n_squads=args.keep_squad,
+        budget_lower=budget_lower,
+        budget_upper=budget_upper,
+        max_players_per_team=max_players_per_team,
+        n_squads=keep_squad,
     )
 
-    if args.gkp_def_not_same_team:
+    if gkp_def_not_same_team:
         squads = [s for s in squads if constraints.gkp_def_same_team(s.players)]
 
-    if args.max_def_per_team:
+    if max_def_per_team:
         squads = [
             s
             for s in squads
             if max(
                 collections.Counter(p.team for p in s if p.position == "DEF").values()
             )
-            <= args.max_def_per_team
+            <= max_def_per_team
         ]
 
     # Sort lineups by TSscore.
@@ -393,7 +325,3 @@ def main() -> None:
         f"Max ts: {maxts:.2f}",
         f"Max-Min ts: {(maxts-mints):.2f}",
     )
-
-
-if __name__ == "__main__":
-    main()

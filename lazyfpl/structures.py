@@ -66,7 +66,7 @@ class Player:
     news: str = dataclasses.field(compare=True)
     position: POSITIONS = dataclasses.field(compare=False)
     price: int = dataclasses.field(compare=False)
-    selected: int | None = dataclasses.field(compare=False)
+    selected: int = dataclasses.field(compare=False)
     team: str = dataclasses.field(compare=False)
     team_short: str = dataclasses.field(compare=False)
     webname: str = dataclasses.field(compare=True)
