@@ -83,7 +83,7 @@ def players_backeval(
                 traceback.print_exception(e)
 
 
-if __name__ == "__main__":
+def main() -> None:
     player_xp = tuple(players_backeval())
 
     for player, ev in player_xp:

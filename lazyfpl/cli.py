@@ -223,5 +223,13 @@ def differential(
     )
 
 
+@app.command()
+def backeval() -> None:
+    """Validate the accuracy of the models predictions"""
+    from lazyfpl import backevel
+
+    backevel.main()
+
+
 if __name__ == "__main__":
     app()
