@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import collections
 import itertools
 from typing import Generator, NamedTuple, Sequence
@@ -148,78 +147,32 @@ def transfer(
                 )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="Transfer picker.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--add",
-        nargs="+",
-        default=[],
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--exclude",
-        nargs="+",
-        default=[],
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--max-candidates",
-        default=100,
-        type=int,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--max-transfers",
-        type=int,
-        required=True,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-mtm",
-        default=0.0,
-        type=float,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-xp",
-        default=0.0,
-        type=float,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--no-news",
-        action="store_true",
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--remove",
-        nargs="+",
-        default=[],
-        help="(default: %(default)s)",
-    )
-
-    args = parser.parse_args()
-
+def main(
+    add: list[str],
+    exclude: list[str],
+    max_transfers: int,
+    min_mtm: float,
+    min_xp: float,
+    no_news: bool,
+    remove: list[str],
+) -> None:
     pool = [p for p in fetch.players() if p.xP is not None]
 
-    if args.exclude:
-        pool = [p for p in pool if p.webname not in args.exclude]
-        pool = [p for p in pool if p.team not in args.exclude]
+    if exclude:
+        pool = [p for p in pool if p.webname not in exclude]
+        pool = [p for p in pool if p.team not in exclude]
 
-    if args.min_xp:
-        pool = [p for p in pool if p.xP >= args.min_xp]
+    if min_xp:
+        pool = [p for p in pool if p.xP >= min_xp]
 
-    if args.min_mtm:
-        pool = [p for p in pool if p.mtm() >= args.min_mtm]
+    if min_mtm:
+        pool = [p for p in pool if p.mtm() >= min_mtm]
 
-    if args.no_news:
+    if no_news:
         pool = [p for p in pool if not p.news]
 
-    if args.add:
-        pool += [p for p in fetch.players() if p.webname in args.add]
+    if add:
+        pool += [p for p in fetch.players() if p.webname in add]
 
     print(">>> Pool")
     print(structures.Squad(pool))
@@ -233,18 +186,12 @@ def main() -> None:
         transfer(
             current=team.players,
             pool=list(set(pool)),
-            add=[p for p in pool if p.webname in args.add] if args.add else [],
-            remove=[p for p in team.players if p.webname in args.remove]
-            if args.remove
-            else [],
-            max_transfers=args.max_transfers,
+            add=[p for p in pool if p.webname in add] if add else [],
+            remove=[p for p in team.players if p.webname in remove] if remove else [],
+            max_transfers=max_transfers,
         ),
         key=lambda x: x.bought.xP - x.sold.xP,
     )[-100:]
 
     for trans in transfers:
         display(trans)
-
-
-if __name__ == "__main__":
-    main()

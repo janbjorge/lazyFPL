@@ -1,60 +1,27 @@
 from __future__ import annotations
 
-import argparse
 from itertools import chain, groupby
 
 from lazyfpl import fetch, helpers
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--min-mtm",
-        type=float,
-        default=0.0,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--min-selected",
-        "-mc",
-        default=1_000,
-        help=(
-            "Player must be selected by at least this amunt of"
-            "managers. (default: %(default)s)"
-        ),
-        type=int,
-    )
-    parser.add_argument(
-        "--min-xp",
-        type=float,
-        default=0.0,
-        help="(default: %(default)s)",
-    )
-    parser.add_argument(
-        "--no-news",
-        action="store_true",
-        help="Drop players with news attched to them. (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--top",
-        "-t",
-        default=None,
-        help="Top N players per position. (default: %(default)s)",
-        type=int,
-    )
-    args = parser.parse_args()
 
+def main(
+    min_mtm: float,
+    min_selected: int,
+    min_xp: float,
+    no_news: bool,
+    top: int,
+) -> None:
     pool = fetch.players()
 
-    if args.no_news:
+    if no_news:
         pool = [p for p in pool if not p.news]
 
     pool = sorted(
         [
             p
             for p in pool
-            if p.selected > args.min_selected
-            and (p.xP or 0) > args.min_xp
-            and p.mtm() > args.min_mtm
+            if p.selected > min_selected and (p.xP or 0) > min_xp and p.mtm() > min_mtm
         ],
         key=lambda x: (
             -helpers.position_order(x.position),
@@ -64,7 +31,7 @@ if __name__ == "__main__":
 
     pool = list(
         chain.from_iterable(
-            list(x)[: args.top]
+            list(x)[:top]
             for _, x in groupby(
                 pool,
                 key=lambda x: helpers.position_order(x.position),
