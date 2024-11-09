@@ -50,6 +50,7 @@ dependencies = [
     "tabulate",
     "more-itertools",
     "typer",
+    "pydantic-settings>=2.6.1",
 ]
 
 
