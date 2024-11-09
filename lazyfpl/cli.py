@@ -73,6 +73,10 @@ def show(
 
 @app.command()
 def transfer(
+    max_transfers: int = typer.Argument(
+        ...,
+        help="Maximum number of transfers allowed.",
+    ),
     add: list[str] = typer.Option(
         [],
         help="Players to add.",
@@ -80,10 +84,6 @@ def transfer(
     exclude: list[str] = typer.Option(
         [],
         help="Players to exclude.",
-    ),
-    max_transfers: int = typer.Option(
-        ...,
-        help="Maximum number of transfers allowed.",
     ),
     min_mtm: float = typer.Option(
         0.0,
