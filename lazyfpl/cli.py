@@ -25,7 +25,7 @@ def train(
         help="Learning rate for the optimizer.",
     ),
     min_mtm: int = typer.Option(
-        0,
+        60,
         help="Minimum mean time metric for filtering players.",
     ),
     upsample: int = typer.Option(
@@ -86,11 +86,11 @@ def transfer(
         help="Players to exclude.",
     ),
     min_mtm: float = typer.Option(
-        0.0,
+        60.0,
         help="Minimum mean time metric.",
     ),
     min_xp: float = typer.Option(
-        0.0,
+        6.0,
         help="Minimum expected points.",
     ),
     no_news: bool = typer.Option(
@@ -147,11 +147,11 @@ def lineup_optimizer(
         help="Maximum number of players per team.",
     ),
     min_mtm: float = typer.Option(
-        0.0,
+        60.0,
         help="Minimum mean time metric.",
     ),
     min_xp: float = typer.Option(
-        0.0,
+        6.0,
         help="Minimum expected points.",
     ),
     no_news: bool = typer.Option(
@@ -189,7 +189,7 @@ def lineup_optimizer(
 @app.command()
 def differential(
     min_mtm: float = typer.Option(
-        0.0,
+        60.0,
         help="Minimum mean time metric.",
     ),
     min_selected: int = typer.Option(
@@ -198,7 +198,7 @@ def differential(
         help="Player must be selected by at least this amount of managers.",
     ),
     min_xp: float = typer.Option(
-        0.0,
+        6.0,
         help="Minimum expected points.",
     ),
     no_news: bool = typer.Option(
@@ -229,6 +229,13 @@ def backeval() -> None:
     from lazyfpl import backevel
 
     backevel.main()
+
+
+@app.command()
+def team() -> None:
+    from lazyfpl import fetch
+
+    print(fetch.my_team())
 
 
 if __name__ == "__main__":
