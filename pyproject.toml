@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 requires-python = ">= 3.11"
 name = "lazyfpl"
-version = "0.4.0"
+version = "0.4.3"
 description = "Fantasy Premier League Team Optimizer - Win at FPL with lazines"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{name = "JB Lovland", email = "janbjorge@gmail.com"}]
+authors = [{name = "JeyBee", email = "janbjorge@gmail.com"}]
 homepage = "https://github.com/janbjorge/lazyFPL"
 repository = "https://github.com/janbjorge/lazyFPL"
 keywords = [
