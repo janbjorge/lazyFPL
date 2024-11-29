@@ -56,7 +56,7 @@ The application features a CLI implemented via `typer`, allowing for a more intu
 
 ```bash
 # Populate the database with team data.
-fpl
+fpl populate
 
 # Train the ML model on the populated data with default training parameters.
 fpl train
