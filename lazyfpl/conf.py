@@ -4,10 +4,11 @@ import pathlib
 import typing
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _Env(BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
     backtrace: int = Field(
         alias="FPL_BACKTRACE",
         default=3,
