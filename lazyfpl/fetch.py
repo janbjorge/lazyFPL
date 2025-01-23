@@ -149,18 +149,22 @@ def picks() -> list[Persona]:
     """
     Fetches and returns the current team picks from the Fantasy Premier League API.
     """
-    if not conf.teamid or not conf.profile:
+    if not conf.teamid or not conf.profile or not conf.sessionid:
         raise RuntimeError(
-            "Env. FPL-teamid and FPL-cookie/profile must be set. FPL-team id "
+            "Env. FPL-teamid and FPL-cookie/profile/sessionid must be set. FPL-team id "
             "from URL and cookie 'pl_profile' from 'application' in chrome."
         )
 
     response = requests.get(
         f"https://fantasy.premierleague.com/api/my-team/{conf.teamid}/",
-        cookies={"pl_profile": conf.profile},
+        cookies={
+            "pl_profile": conf.profile,
+            "sessionid": conf.sessionid,
+        },
     )
+
     if not response:
-        raise RuntimeError("Non 2xx status code.")
+        raise RuntimeError("Non 2xx status code.", response)
 
     return [person(p["element"]) for p in response.json()["picks"]]
 

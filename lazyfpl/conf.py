@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _Env(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
     backtrace: int = Field(
         alias="FPL_BACKTRACE",
         default=3,
@@ -32,6 +32,10 @@ class _Env(BaseSettings):
         alias="FPL_PROFILE",
         default="",
     )
+    sessionid: str = Field(
+        alias="FPL_SESSIONID",
+        default="",
+    )
     tabulate_format: str = Field(
         alias="FPL_TABULATE_FORMAT",
         default="tsv",
@@ -47,5 +51,6 @@ db: typing.Final = _Env().db
 debug: typing.Final = _Env().debug
 lookahead: typing.Final = _Env().lookahead
 profile: typing.Final = _Env().profile
+sessionid: typing.Final = _Env().sessionid
 tabulate_format: typing.Final = _Env().tabulate_format
 teamid: typing.Final = _Env().teamid
