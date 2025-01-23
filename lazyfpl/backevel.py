@@ -108,7 +108,7 @@ def main() -> None:
             for _, values in player_xp
             for v in values
         )
-        print(f"RC{n}: {rc*100:.1f}")
+        print(f"RC{n}: {rc * 100:.1f}")
 
     print()
 

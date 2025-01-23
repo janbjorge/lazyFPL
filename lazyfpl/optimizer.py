@@ -313,15 +313,15 @@ def main(
     print(
         f"Min CxP: {mincxp:.1f}",
         f"Max CxP: {maxxcp:.1f}",
-        f"Max-Min CxP: {(maxxcp-mincxp):.1f}",
+        f"Max-Min CxP: {(maxxcp - mincxp):.1f}",
     )
     print(
         f"Min ss: {minss:d}",
         f"Max ss: {maxss:d}",
-        f"Max-Min ss: {(maxss-minss):d}",
+        f"Max-Min ss: {(maxss - minss):d}",
     )
     print(
         f"Min ts: {mints:.2f}",
         f"Max ts: {maxts:.2f}",
-        f"Max-Min ts: {(maxts-mints):.2f}",
+        f"Max-Min ts: {(maxts - mints):.2f}",
     )

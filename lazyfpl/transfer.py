@@ -40,7 +40,7 @@ def display(trans: Transfer) -> None:
             f"{b.webname:<{max_len_in_name}} - "
             f"{b.team:<{max_len_in_team}} {b.xP or 0.0:.1f}"
         )
-    print(f"xP gain: {(trans.bought.xP-trans.sold.xP):.1f}")
+    print(f"xP gain: {(trans.bought.xP - trans.sold.xP):.1f}")
 
 
 def transfer(

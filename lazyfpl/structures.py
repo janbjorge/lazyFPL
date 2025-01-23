@@ -164,7 +164,7 @@ class Squad:
         return len(self.players)
 
     def __str(self) -> Generator[str, None, None]:
-        yield f"Price: {self.price()/10} Size: {len(self.players)}"
+        yield f"Price: {self.price() / 10} Size: {len(self.players)}"
         yield f"LxP: {self.LxP():.1f} SxP: {self.SxP():.1f} CxP: {self.CxP():.1f}"
         yield (
             f"Schedule score: {self.sscore()} Team score: {self.tscore()} "

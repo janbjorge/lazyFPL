@@ -233,7 +233,7 @@ def populate_players(session: structures.SESSIONS = structures.CURRENT_SESSION) 
             sql,
             (
                 ele["web_name"],
-                f'{ele["first_name"]} {ele["second_name"]}',
+                f"{ele['first_name']} {ele['second_name']}",
                 ele["now_cost"],
                 ele["news"],
                 session,
@@ -375,7 +375,7 @@ def upcoming_team_id_to_name(id: int) -> str:
 def upcoming_position(name: str) -> structures.POSITIONS:
     """Determines the position of a player based on their name for upcoming games."""
     for element in bootstrap()["elements"]:
-        if f'{element["first_name"]} {element["second_name"]}' == name:
+        if f"{element['first_name']} {element['second_name']}" == name:
             element_type = bootstrap()["element_types"][element["element_type"] - 1]
             return element_type["singular_name_short"]
     raise ValueError(f"No player named: {name}")
